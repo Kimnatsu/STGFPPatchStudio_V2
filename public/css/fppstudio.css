@@ -136,6 +136,32 @@ body {
   font-size: 13px;
 }
 
+.dev-mode-notice {
+  margin-top: 20px;
+  padding: 16px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.dev-mode-notice i {
+  font-size: 24px;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+.dev-mode-notice p {
+  font-size: 13px;
+  color: var(--text);
+  margin: 4px 0;
+}
+
+.dev-mode-notice .dev-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 /* ===== App Container ===== */
 .app-container {
   display: flex;
