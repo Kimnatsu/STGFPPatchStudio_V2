@@ -5,12 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FPPStudio - 관리자 페이지</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="/css/fppstudio.css" />
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+  <link rel="stylesheet" href="./css/fppstudio.css" />
+  <!-- Firebase SDK (프로덕션에서만 로드) -->
+  <script>
+    // DEV_MODE 체크 - 실제 운영 시 false로 변경
+    window.FPP_DEV_MODE = true;
+    if (!window.FPP_DEV_MODE) {
+      document.write('<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"><\/script>');
+      document.write('<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"><\/script>');
+      document.write('<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"><\/script>');
+      document.write('<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"><\/script>');
+    }
+  </script>
 </head>
 <body>
   <!-- Login Screen -->
@@ -274,6 +280,6 @@
   <script type="module" src="/src/main.jsx"></script>
 
   <!-- FPPStudio JS -->
-  <script src="/js/fppstudio.js"></script>
+  <script src="./js/fppstudio.js"></script>
 </body>
 </html>

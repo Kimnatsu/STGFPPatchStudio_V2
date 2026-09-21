@@ -1,5 +1,13 @@
 // ===== FPPStudio Main JavaScript =====
 
+// ===== Development Mode =====
+const DEV_MODE = window.FPP_DEV_MODE !== undefined ? window.FPP_DEV_MODE : true; // Set to false for production
+const DEV_USER = {
+  uid: 'dev-user-001',
+  email: 'admin@fppstudio.dev',
+  displayName: '개발자'
+};
+
 // ===== Firebase Configuration =====
 const firebaseConfig = {
   apiKey: "AIzaSyCF1o7_h-70-HwfC_5YoxOmTJFTBfFa04w",
@@ -68,14 +76,6 @@ const ADMIN_EMAILS = [
   'brawnstars201596@gmail.com'
 ];
 const SUPER_ADMIN_EMAIL = 'gichan1005kim@gmail.com';
-
-// ===== Development Mode =====
-const DEV_MODE = true; // Set to false for production
-const DEV_USER = {
-  uid: 'dev-user-001',
-  email: 'admin@fppstudio.dev',
-  displayName: '개발자'
-};
 
 // ===== App State =====
 const AppState = {
@@ -216,10 +216,23 @@ async function checkAdminPermissions(user) {
 }
 
 async function handleLogin() {
-  const email = $('#loginEmail').value.trim();
-  const password = $('#loginPassword').value;
+  console.log('🔐 handleLogin 호출됨');
+  console.log('DEV_MODE:', DEV_MODE);
+  
+  const emailInput = $('#loginEmail');
+  const passwordInput = $('#loginPassword');
+  
+  if (!emailInput) {
+    console.error('❌ 이메일 입력 필드를 찾을 수 없습니다');
+    return;
+  }
+  
+  const email = emailInput.value.trim();
+  const password = passwordInput ? passwordInput.value : '';
   const errorEl = $('#loginError');
   const loadingEl = $('#loginLoading');
+  
+  console.log('입력된 이메일:', email);
   
   // DEV_MODE: 간단한 검증만
   if (DEV_MODE) {
@@ -2153,7 +2166,10 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Login
   $('#loginBtn').addEventListener('click', handleLogin);
-  $('#loginPassword').addEventListener('keyup', (e) => { if (e.key === 'Enter') handleLogin(); });
+  $('#loginEmail').addEventListener('keyup', (e) => { if (e.key === 'Enter') handleLogin(); });
+  if ($('#loginPassword')) {
+    $('#loginPassword').addEventListener('keyup', (e) => { if (e.key === 'Enter') handleLogin(); });
+  }
   
   // Sidebar
   $('#sidebarCollapseBtn').addEventListener('click', toggleSidebar);
