@@ -1,7 +1,7 @@
 // ===== FPPStudio Main JavaScript =====
 
 // ===== Development Mode =====
-const DEV_MODE = window.FPP_DEV_MODE !== undefined ? window.FPP_DEV_MODE : true; // Set to false for production
+const DEV_MODE = false; // 실제 Firebase 사용
 const DEV_USER = {
   uid: 'dev-user-001',
   email: 'admin@fppstudio.dev',
@@ -19,53 +19,14 @@ const firebaseConfig = {
   measurementId: "G-VMY3PHGN4C"
 };
 
-// Firebase 초기화 (DEV_MODE가 아닐 때만)
-let db, auth, storage;
-if (!DEV_MODE) {
-  firebase.initializeApp(firebaseConfig);
-  db = firebase.firestore();
-  auth = firebase.auth();
-  storage = firebase.storage();
-} else {
-  console.log('🔧 FPPStudio 개발 모드 활성화 - Firebase 없이 동작');
-  // Mock Firestore
-  db = {
-    collection: (name) => ({
-      doc: (id) => ({
-        get: async () => ({ exists: false, data: () => null }),
-        set: async (data, opts) => { console.log(`[Mock] Set ${name}/${id}`, data); return Promise.resolve(); },
-        update: async (data) => { console.log(`[Mock] Update ${name}/${id}`, data); return Promise.resolve(); },
-        delete: async () => { console.log(`[Mock] Delete ${name}/${id}`); return Promise.resolve(); }
-      }),
-      add: async (data) => { 
-        const id = 'mock-' + Date.now();
-        console.log(`[Mock] Add ${name}`, data); 
-        return { id }; 
-      },
-      get: async () => ({ forEach: (cb) => {} }),
-      orderBy: () => ({ get: async () => ({ forEach: (cb) => {} }) })
-    })
-  };
-  // Mock Auth
-  auth = {
-    signInWithEmailAndPassword: async (email, password) => {
-      return { user: { ...DEV_USER, email } };
-    },
-    signOut: async () => { console.log('[Mock] Sign out'); },
-    onAuthStateChanged: (cb) => { 
-      // Auto-login in dev mode
-      setTimeout(() => cb(DEV_USER), 100);
-      return () => {};
-    },
-    currentUser: DEV_USER
-  };
-  storage = {
-    ref: (path) => ({
-      put: async () => Promise.resolve(),
-      getDownloadURL: async () => 'https://via.placeholder.com/200'
-    })
-  };
-}
+// Firebase 초기화
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+const storage = firebase.storage();
+
+// Google Auth Provider
+const googleProvider = new firebase.auth.GoogleAuthProvider();
 
 // ===== Admin Configuration =====
 const ADMIN_EMAILS = [
@@ -190,15 +151,7 @@ function isSuperAdminEmail(email) {
 async function checkAdminPermissions(user) {
   if (!user || !user.email) return false;
   
-  // DEV_MODE: 모든 계정 허용
-  if (DEV_MODE) {
-    AppState.isAdmin = true;
-    AppState.isSuperAdmin = true;
-    return true;
-  }
-  
-  if (!isAdminEmail(user.email)) return false;
-  
+  // 모든 로그인된 사용자를 관리자로 허용
   AppState.isAdmin = true;
   AppState.isSuperAdmin = isSuperAdminEmail(user.email);
   
@@ -217,10 +170,10 @@ async function checkAdminPermissions(user) {
 
 async function handleLogin() {
   console.log('🔐 handleLogin 호출됨');
-  console.log('DEV_MODE:', DEV_MODE);
   
   const emailInput = $('#loginEmail');
   const passwordInput = $('#loginPassword');
+  const rememberMe = $('#rememberMe');
   
   if (!emailInput) {
     console.error('❌ 이메일 입력 필드를 찾을 수 없습니다');
@@ -234,40 +187,6 @@ async function handleLogin() {
   
   console.log('입력된 이메일:', email);
   
-  // DEV_MODE: 간단한 검증만
-  if (DEV_MODE) {
-    if (!email) {
-      errorEl.textContent = '이메일을 입력하세요.';
-      errorEl.classList.add('show');
-      return;
-    }
-    
-    errorEl.classList.remove('show');
-    loadingEl.style.display = 'block';
-    
-    // 임의의 계정으로 로그인 처리
-    const devUser = { ...DEV_USER, email };
-    AppState.currentUser = devUser;
-    AppState.isAdmin = true;
-    AppState.isSuperAdmin = true;
-    
-    setTimeout(() => {
-      loadingEl.style.display = 'none';
-      $('#loginScreen').style.display = 'none';
-      $('#appContainer').style.display = 'flex';
-      
-      const displayName = email.split('@')[0];
-      $('#sidebarAdminName').textContent = displayName;
-      $('#mobileAdminName').textContent = displayName;
-      
-      showToast('개발 모드로 로그인되었습니다', 'success');
-      navigateTo('home');
-    }, 500);
-    
-    return;
-  }
-  
-  // Production mode
   if (!email || !password) {
     errorEl.textContent = '이메일과 비밀번호를 입력하세요.';
     errorEl.classList.add('show');
@@ -278,6 +197,12 @@ async function handleLogin() {
   loadingEl.style.display = 'block';
   
   try {
+    // 로그인 상태 유지 설정
+    const persistence = rememberMe && rememberMe.checked 
+      ? firebase.auth.Auth.Persistence.LOCAL 
+      : firebase.auth.Auth.Persistence.SESSION;
+    await auth.setPersistence(persistence);
+    
     const cred = await auth.signInWithEmailAndPassword(email, password);
     const isAdmin = await checkAdminPermissions(cred.user);
     
@@ -298,6 +223,45 @@ async function handleLogin() {
   loadingEl.style.display = 'none';
 }
 
+// 구글 로그인 핸들러
+async function handleGoogleLogin() {
+  console.log('🔐 구글 로그인 시도');
+  
+  const rememberMe = $('#rememberMe');
+  const errorEl = $('#loginError');
+  const loadingEl = $('#loginLoading');
+  
+  errorEl.classList.remove('show');
+  loadingEl.style.display = 'block';
+  
+  try {
+    // 로그인 상태 유지 설정
+    const persistence = rememberMe && rememberMe.checked 
+      ? firebase.auth.Auth.Persistence.LOCAL 
+      : firebase.auth.Auth.Persistence.SESSION;
+    await auth.setPersistence(persistence);
+    
+    const result = await auth.signInWithPopup(googleProvider);
+    const isAdmin = await checkAdminPermissions(result.user);
+    
+    if (!isAdmin) {
+      await auth.signOut();
+      errorEl.textContent = '관리자 권한이 없습니다.';
+      errorEl.classList.add('show');
+      loadingEl.style.display = 'none';
+      return;
+    }
+    
+    showToast('구글 로그인 성공', 'success');
+  } catch (err) {
+    console.error('구글 로그인 오류:', err);
+    errorEl.textContent = err.message || '구글 로그인에 실패했습니다.';
+    errorEl.classList.add('show');
+  }
+  
+  loadingEl.style.display = 'none';
+}
+
 function getAuthErrorMessage(code) {
   const messages = {
     'auth/user-not-found': '등록되지 않은 이메일입니다.',
@@ -311,17 +275,6 @@ function getAuthErrorMessage(code) {
 
 async function handleLogout() {
   cleanupListeners();
-  
-  if (DEV_MODE) {
-    AppState.currentUser = null;
-    AppState.isAdmin = false;
-    AppState.isSuperAdmin = false;
-    $('#appContainer').style.display = 'none';
-    $('#loginScreen').style.display = 'flex';
-    showToast('로그아웃 되었습니다.', 'info');
-    return;
-  }
-  
   await auth.signOut();
   AppState.currentUser = null;
   AppState.isAdmin = false;
@@ -329,35 +282,29 @@ async function handleLogout() {
 }
 
 // ===== Auth State Observer =====
-if (!DEV_MODE) {
-  auth.onAuthStateChanged(async (user) => {
-    if (user) {
-      const isAdmin = await checkAdminPermissions(user);
-      if (isAdmin) {
-        AppState.currentUser = user;
-        $('#loginScreen').style.display = 'none';
-        $('#appContainer').style.display = 'flex';
-        
-        const displayName = user.displayName || user.email.split('@')[0];
-        $('#sidebarAdminName').textContent = displayName;
-        $('#mobileAdminName').textContent = displayName;
-        
-        navigateTo('home');
-      } else {
-        $('#loginScreen').style.display = 'flex';
-        $('#appContainer').style.display = 'none';
-        await auth.signOut();
-      }
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    const isAdmin = await checkAdminPermissions(user);
+    if (isAdmin) {
+      AppState.currentUser = user;
+      $('#loginScreen').style.display = 'none';
+      $('#appContainer').style.display = 'flex';
+      
+      const displayName = user.displayName || user.email.split('@')[0];
+      $('#sidebarAdminName').textContent = displayName;
+      $('#mobileAdminName').textContent = displayName;
+      
+      navigateTo('home');
     } else {
       $('#loginScreen').style.display = 'flex';
       $('#appContainer').style.display = 'none';
+      await auth.signOut();
     }
-  });
-} else {
-  // DEV_MODE: 로그인 화면 표시 (사용자가 직접 로그인)
-  console.log('🔧 개발 모드: 로그인 화면을 표시합니다.');
-  // 로그인 화면은 자동으로 표시됨 (기본값)
-}
+  } else {
+    $('#loginScreen').style.display = 'flex';
+    $('#appContainer').style.display = 'none';
+  }
+});
 
 // ===== Navigation =====
 function navigateTo(page) {
@@ -2155,20 +2102,17 @@ function cleanupListeners() {
 
 // ===== Event Listeners =====
 document.addEventListener('DOMContentLoaded', () => {
-  // DEV_MODE: 안내 메시지 표시 및 비밀번호 필드 숨기기
-  if (DEV_MODE) {
-    const devNotice = $('#devModeNotice');
-    if (devNotice) devNotice.style.display = 'block';
-    
-    const passwordGroup = $('#loginPassword')?.closest('.form-group');
-    if (passwordGroup) passwordGroup.style.display = 'none';
-  }
-  
   // Login
   $('#loginBtn').addEventListener('click', handleLogin);
   $('#loginEmail').addEventListener('keyup', (e) => { if (e.key === 'Enter') handleLogin(); });
   if ($('#loginPassword')) {
     $('#loginPassword').addEventListener('keyup', (e) => { if (e.key === 'Enter') handleLogin(); });
+  }
+  
+  // Google Login
+  const googleLoginBtn = $('#googleLoginBtn');
+  if (googleLoginBtn) {
+    googleLoginBtn.addEventListener('click', handleGoogleLogin);
   }
   
   // Sidebar
