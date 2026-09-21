@@ -1,13 +1,5 @@
 // ===== FPPStudio Main JavaScript =====
 
-// ===== Development Mode =====
-const DEV_MODE = false; // 실제 Firebase 사용
-const DEV_USER = {
-  uid: 'dev-user-001',
-  email: 'admin@fppstudio.dev',
-  displayName: '개발자'
-};
-
 // ===== Firebase Configuration =====
 const firebaseConfig = {
   apiKey: "AIzaSyCF1o7_h-70-HwfC_5YoxOmTJFTBfFa04w",
