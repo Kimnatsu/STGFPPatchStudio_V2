@@ -54,7 +54,7 @@
 
     const output = buildTransformedCanvas();
     const maxWidth = Math.min(760, state.canvas.parentElement.clientWidth || 760);
-    const maxHeight = 420;
+    const maxHeight = 520;
     const scale = Math.min(maxWidth / output.width, maxHeight / output.height, 1);
     state.canvas.width = Math.max(1, Math.round(output.width * scale));
     state.canvas.height = Math.max(1, Math.round(output.height * scale));
@@ -231,16 +231,20 @@
     overlay.innerHTML = `
       <section class="image-editor-modal" role="dialog" aria-modal="true" aria-labelledby="imageEditorTitle">
         <header class="image-editor-header">
-          <div>
-            <span class="image-editor-eyebrow">IMAGE EDITOR</span>
-            <h3 id="imageEditorTitle">이미지 편집</h3>
+          <h3 id="imageEditorTitle">이미지 편집 <span>1:1 이미지</span></h3>
+          <div class="image-editor-header-actions">
+            <button type="button" class="image-editor-guide" id="imageEditorGuide">
+              <i class="far fa-question-circle"></i>
+              <span>가이드 보기</span>
+              <span class="image-editor-switch is-on" aria-hidden="true"><span></span></span>
+            </button>
+            <button type="button" class="modal-close" id="imageEditorClose" aria-label="이미지 편집 닫기">
+              <i class="fas fa-times"></i>
+            </button>
           </div>
-          <button type="button" class="modal-close" id="imageEditorClose" aria-label="이미지 편집 닫기">
-            <i class="fas fa-times"></i>
-          </button>
         </header>
         <div class="image-editor-body">
-          <div class="image-editor-stage" id="imageEditorStage">
+          <div class="image-editor-stage is-guided" id="imageEditorStage">
             <canvas id="imageEditorCanvas"></canvas>
             <div class="image-editor-crop-box" id="imageEditorCropBox">
               <span class="crop-corner top-left"></span>
@@ -249,18 +253,23 @@
               <span class="crop-corner bottom-right"></span>
             </div>
           </div>
-          <p class="image-editor-hint"><i class="fas fa-hand-pointer"></i> 이미지 위를 드래그해 자를 영역을 선택하세요. 선택하지 않으면 전체 이미지가 저장됩니다.</p>
-          <div class="image-editor-toolbar" aria-label="이미지 조작 도구">
-            <button type="button" class="btn btn-secondary btn-sm" id="imageRotateLeft"><i class="fas fa-undo"></i> 왼쪽 회전</button>
-            <button type="button" class="btn btn-secondary btn-sm" id="imageRotateRight"><i class="fas fa-redo"></i> 오른쪽 회전</button>
-            <button type="button" class="btn btn-secondary btn-sm" id="imageFlipHorizontal"><i class="fas fa-arrows-alt-h"></i> 좌우 반전</button>
-            <button type="button" class="btn btn-secondary btn-sm" id="imageFlipVertical"><i class="fas fa-arrows-alt-v"></i> 상하 반전</button>
-            <button type="button" class="btn btn-secondary btn-sm" id="imageResetCrop"><i class="fas fa-expand"></i> 전체 영역</button>
-          </div>
         </div>
         <footer class="image-editor-footer">
-          <button type="button" class="btn btn-secondary" id="imageEditorCancel">취소</button>
-          <button type="button" class="btn btn-primary" id="imageEditorSave"><i class="fas fa-check"></i> 편집 결과 사용</button>
+          <button type="button" class="image-editor-storage" id="imageEditorStorage">
+            <i class="far fa-save"></i> 스토리지 저장
+          </button>
+          <div class="image-editor-tools" aria-label="이미지 조작 도구">
+            <button type="button" class="image-editor-tool" id="imageRotateLeft" title="왼쪽 회전"><i class="fas fa-undo"></i></button>
+            <button type="button" class="image-editor-tool" id="imageFlipHorizontal" title="좌우 반전"><i class="fas fa-arrows-alt-h"></i></button>
+            <button type="button" class="image-editor-tool" id="imageRotateRight" title="오른쪽 회전"><i class="fas fa-redo"></i></button>
+            <span class="image-editor-tool-divider"></span>
+            <span class="image-editor-background-label">배경색</span>
+            <button type="button" class="image-editor-tool image-editor-color-tool" id="imageBackgroundToggle" title="배경색"><i class="fas fa-slash"></i></button>
+          </div>
+          <div class="image-editor-footer-actions">
+            <button type="button" class="image-editor-logo" id="imageEditorLogo"><i class="far fa-image"></i> 로고 추가</button>
+            <button type="button" class="image-editor-apply" id="imageEditorSave"><i class="fas fa-check"></i> 적용</button>
+          </div>
         </footer>
       </section>
     `;
@@ -269,9 +278,19 @@
     state.canvas = document.getElementById('imageEditorCanvas');
     state.cropBox = document.getElementById('imageEditorCropBox');
     document.getElementById('imageEditorClose').addEventListener('click', close);
-    document.getElementById('imageEditorCancel').addEventListener('click', close);
     document.getElementById('imageEditorSave').addEventListener('click', exportImage);
-    document.getElementById('imageResetCrop').addEventListener('click', resetCrop);
+    document.getElementById('imageEditorStorage').addEventListener('click', exportImage);
+    document.getElementById('imageEditorGuide').addEventListener('click', event => {
+      const switcher = event.currentTarget.querySelector('.image-editor-switch');
+      const enabled = switcher.classList.toggle('is-on');
+      document.getElementById('imageEditorStage').classList.toggle('is-guided', enabled);
+    });
+    document.getElementById('imageBackgroundToggle').addEventListener('click', () => {
+      document.getElementById('imageEditorStage').classList.toggle('is-white-background');
+    });
+    document.getElementById('imageEditorLogo').addEventListener('click', () => {
+      window.showToast?.('로고 추가 기능은 다음 업데이트에서 제공됩니다.', 'info');
+    });
     document.getElementById('imageRotateLeft').addEventListener('click', () => {
       state.rotation = (state.rotation + 270) % 360;
       renderCanvas(true);
@@ -282,10 +301,6 @@
     });
     document.getElementById('imageFlipHorizontal').addEventListener('click', () => {
       state.flipHorizontal = !state.flipHorizontal;
-      renderCanvas(false);
-    });
-    document.getElementById('imageFlipVertical').addEventListener('click', () => {
-      state.flipVertical = !state.flipVertical;
       renderCanvas(false);
     });
     state.canvas.addEventListener('pointerdown', handlePointerDown);
