@@ -1,24 +1,7 @@
 // ===== FPPStudio Main JavaScript =====
 
-// ===== Firebase Configuration =====
-const firebaseConfig = {
-  apiKey: "AIzaSyCF1o7_h-70-HwfC_5YoxOmTJFTBfFa04w",
-  authDomain: "fighting-path-patch.firebaseapp.com",
-  projectId: "fighting-path-patch",
-  storageBucket: "fighting-path-patch.firebasestorage.app",
-  messagingSenderId: "1071337898551",
-  appId: "1:1071337898551:web:d6f2c10f0f29e430a675b2",
-  measurementId: "G-VMY3PHGN4C"
-};
-
-// Firebase 초기화
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-const storage = firebase.storage();
-
-// Google Auth Provider
-const googleProvider = new firebase.auth.GoogleAuthProvider();
+// Firebase services are initialized in js/firebase.js.
+const { db, auth, storage, googleProvider, FieldValue, Persistence } = window.FPPFirebase;
 
 // ===== Admin Configuration =====
 const ADMIN_EMAILS = [
@@ -72,7 +55,11 @@ function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
-  toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${message}</span>`;
+  const icon = document.createElement('i');
+  icon.className = `fas ${icons[type] || icons.info}`;
+  const text = document.createElement('span');
+  text.textContent = message;
+  toast.append(icon, text);
   container.appendChild(toast);
   setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
@@ -142,22 +129,23 @@ function isSuperAdminEmail(email) {
 
 async function checkAdminPermissions(user) {
   if (!user || !user.email) return false;
-  
-  // 모든 로그인된 사용자를 관리자로 허용
-  AppState.isAdmin = true;
-  AppState.isSuperAdmin = isSuperAdminEmail(user.email);
-  
-  // Load admin permissions from Firestore
+
+  const email = user.email.trim().toLowerCase();
+  AppState.isAdmin = isAdminEmail(email);
+  AppState.isSuperAdmin = isSuperAdminEmail(email);
+
+  // Allow only the configured admins or an explicitly provisioned admin record.
   try {
-    const permDoc = await db.collection('adminPermissions').doc(user.email).get();
+    const permDoc = await db.collection('adminPermissions').doc(email).get();
     if (permDoc.exists) {
       AppState.adminPermissions = permDoc.data();
+      AppState.isAdmin = AppState.isAdmin || permDoc.data().isAdmin !== false;
     }
   } catch (e) {
-    console.log('Permission doc not found, using defaults');
+    console.warn('관리자 권한 문서를 확인하지 못했습니다.', e);
   }
-  
-  return true;
+
+  return AppState.isAdmin;
 }
 
 async function handleLogin() {
@@ -191,8 +179,8 @@ async function handleLogin() {
   try {
     // 로그인 상태 유지 설정
     const persistence = rememberMe && rememberMe.checked 
-      ? firebase.auth.Auth.Persistence.LOCAL 
-      : firebase.auth.Auth.Persistence.SESSION;
+      ? Persistence.LOCAL
+      : Persistence.SESSION;
     await auth.setPersistence(persistence);
     
     const cred = await auth.signInWithEmailAndPassword(email, password);
@@ -229,8 +217,8 @@ async function handleGoogleLogin() {
   try {
     // 로그인 상태 유지 설정
     const persistence = rememberMe && rememberMe.checked 
-      ? firebase.auth.Auth.Persistence.LOCAL 
-      : firebase.auth.Auth.Persistence.SESSION;
+      ? Persistence.LOCAL
+      : Persistence.SESSION;
     await auth.setPersistence(persistence);
     
     const result = await auth.signInWithPopup(googleProvider);
@@ -825,6 +813,7 @@ function toggleSelectAll(collection) {
   if (!state) return;
   
   const checkbox = $(`#selectAll_${collection}`);
+  if (!checkbox) return;
   const start = (state.page - 1) * state.itemsPerPage;
   const end = start + state.itemsPerPage;
   const pageData = state.filteredData.slice(start, end);
@@ -835,8 +824,16 @@ function toggleSelectAll(collection) {
     pageData.forEach(item => state.selectedIds.delete(item.id));
   }
   
-  const columns = getPageColumns(collection);
-  renderTable(collection, columns);
+  const specializedRenderers = {
+    members: renderMembersTable,
+    permissions: renderPermissionsTable,
+    support: renderSupportTable
+  };
+  if (specializedRenderers[collection]) {
+    specializedRenderers[collection]();
+  } else {
+    renderTable(collection, getPageColumns(collection));
+  }
 }
 
 function toggleSelect(collection, id) {
@@ -852,6 +849,7 @@ function toggleSelect(collection, id) {
 
 // ===== CRUD Operations =====
 async function handleAddItem(collection) {
+  currentImageFile = null;
   const config = getAddFormConfig(collection);
   if (!config) return;
   
@@ -870,18 +868,19 @@ async function submitAddItem(collection) {
   const config = getAddFormConfig(collection);
   if (!config) return;
   
-  const data = config.getData();
-  if (!data) return;
+  const formData = config.getData();
+  if (!formData) return;
+  const { imageFile, ...data } = formData;
   
   try {
-    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    data.createdAt = FieldValue.serverTimestamp();
     data.adminEmail = AppState.currentUser.email;
     
     const docRef = await db.collection(collection).add(data);
     
     // Upload image if exists
-    if (config.imageFile) {
-      const imageUrl = await uploadImage(config.imageFile, collection, docRef.id);
+    if (imageFile) {
+      const imageUrl = await uploadImage(imageFile, collection, docRef.id);
       await db.collection(collection).doc(docRef.id).update({ imageUrl });
     }
     
@@ -893,6 +892,8 @@ async function submitAddItem(collection) {
     await loadCollectionData(collection, columns);
   } catch (err) {
     showToast('추가 실패: ' + err.message, 'error');
+  } finally {
+    currentImageFile = null;
   }
 }
 
@@ -903,6 +904,7 @@ async function editItem(collection, id) {
   const item = state.data.find(d => d.id === id);
   if (!item) return;
   
+  currentImageFile = null;
   const config = getEditFormConfig(collection, item);
   if (!config) return;
   
@@ -926,32 +928,30 @@ async function submitEditItem(collection, id) {
   const config = getEditFormConfig(collection, item);
   if (!config) return;
   
-  const data = config.getData();
-  if (!data) return;
+  const formData = config.getData();
+  if (!formData) return;
+  const { imageFile, ...data } = formData;
   
   try {
     // Upload new image if exists
-    if (config.imageFile) {
-      const imageUrl = await uploadImage(config.imageFile, collection, id);
+    if (imageFile) {
+      const imageUrl = await uploadImage(imageFile, collection, id);
       data.imageUrl = imageUrl;
     }
     
-    data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    data.updatedAt = FieldValue.serverTimestamp();
     await db.collection(collection).doc(id).update(data);
     
     closeModal();
     showToast('수정되었습니다.', 'success');
-    
-    // Mark unsaved
-    AppState.hasUnsavedChanges = true;
-    const indicator = $('#unsavedIndicator');
-    if (indicator) indicator.style.display = 'flex';
     
     // Reload data
     const columns = getPageColumns(collection);
     await loadCollectionData(collection, columns);
   } catch (err) {
     showToast('수정 실패: ' + err.message, 'error');
+  } finally {
+    currentImageFile = null;
   }
 }
 
@@ -1168,7 +1168,7 @@ function renderMembersTable() {
   const pageData = state.filteredData.slice(start, end);
   
   let html = '<table><thead><tr>';
-  html += '<th class="checkbox-cell"><input type="checkbox" onchange="toggleSelectAll(\'members\')"></th>';
+  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_members" onchange="toggleSelectAll(\'members\')"></th>';
   html += '<th>멤버</th><th>UID</th><th>닉네임 변경 이력</th><th>메모</th><th>작업</th>';
   html += '</tr></thead><tbody>';
   
@@ -1364,7 +1364,7 @@ function renderPermissionsTable() {
   const pageData = state.filteredData.slice(start, end);
   
   let html = '<table><thead><tr>';
-  html += '<th class="checkbox-cell"><input type="checkbox" onchange="toggleSelectAll(\'permissions\')"></th>';
+  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_permissions" onchange="toggleSelectAll(\'permissions\')"></th>';
   html += '<th>멤버</th><th>이메일</th><th>멤버 관리 권한</th><th>스튜디오 권한</th><th>작업</th>';
   html += '</tr></thead><tbody>';
   
@@ -1524,14 +1524,14 @@ function renderSupportTable() {
   const pageData = state.filteredData.slice(start, end);
   
   let html = '<table><thead><tr>';
-  html += '<th class="checkbox-cell"><input type="checkbox"></th>';
+  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_support" onchange="toggleSelectAll(\'support\')"></th>';
   html += '<th>ID</th><th>날짜</th><th>제목</th><th>글쓴이</th><th>문의내용 확인</th><th>문의내용 답변</th><th>관리자</th><th>작업</th>';
   html += '</tr></thead><tbody>';
   
   pageData.forEach(item => {
     const status = item.answered ? '<span class="badge badge-success">답변완료</span>' : '<span class="badge badge-warning">대기중</span>';
     html += `<tr>
-      <td class="checkbox-cell"><input type="checkbox"></td>
+       <td class="checkbox-cell"><input type="checkbox" ${state.selectedIds.has(item.id) ? 'checked' : ''} onchange="toggleSelect('support','${item.id}')"></td>
       <td style="font-size:11px">${item.id.substring(0,8)}...</td>
       <td>${formatDate(item.createdAt)}</td>
       <td>${item.title || '-'}</td>
@@ -1545,6 +1545,35 @@ function renderSupportTable() {
   
   html += '</tbody></table>';
   wrapper.innerHTML = html;
+  renderSupportPagination();
+}
+
+function renderSupportPagination() {
+  const state = AppState.pageStates.support;
+  const container = $('#supportPagination');
+  if (!container) return;
+
+  const totalPages = Math.ceil(state.filteredData.length / state.itemsPerPage);
+  if (totalPages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+
+  let html = `<button ${state.page <= 1 ? 'disabled' : ''} onclick="supportGoPage(${state.page - 1})"><i class="fas fa-angle-left"></i></button>`;
+  const startPage = Math.max(1, state.page - 2);
+  const endPage = Math.min(totalPages, startPage + 4);
+  for (let i = startPage; i <= endPage; i++) {
+    html += `<button class="${i === state.page ? 'active' : ''}" onclick="supportGoPage(${i})">${i}</button>`;
+  }
+  html += `<button ${state.page >= totalPages ? 'disabled' : ''} onclick="supportGoPage(${state.page + 1})"><i class="fas fa-angle-right"></i></button>`;
+  container.innerHTML = html;
+}
+
+function supportGoPage(page) {
+  const state = AppState.pageStates.support;
+  if (!state) return;
+  state.page = page;
+  renderSupportTable();
 }
 
 function viewSupportDetail(id) {
@@ -1589,7 +1618,7 @@ async function saveAnswer(id) {
       answer,
       answered: true,
       adminEmail: AppState.currentUser.email,
-      answeredAt: firebase.firestore.FieldValue.serverTimestamp()
+      answeredAt: FieldValue.serverTimestamp()
     });
     closeModal();
     showToast('답변이 저장되었습니다.', 'success');
@@ -1779,7 +1808,7 @@ function getPageFilterConfig(collection) {
     },
     pvpPatch: {
       filters: [
-        { key: 'type', label: '타입', options: ['버프', ' nerf', '신규', '조정'] }
+        { key: 'type', label: '타입', options: ['버프', 'nerf', '신규', '조정'] }
       ]
     }
   };
