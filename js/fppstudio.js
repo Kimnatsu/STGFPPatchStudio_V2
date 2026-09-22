@@ -438,7 +438,7 @@ function renderHomePage(container) {
 
 // ===== Generic List Page Renderer =====
 function createListPage(container, config) {
-  const { title, collection, columns, filters, hasAdd, hasSaveBar } = config;
+  const { title, collection, columns, filters, filterButtons, filterLeftHtml = '', hasAdd, hasSaveBar } = config;
   
   // Initialize page state
   if (!AppState.pageStates[collection]) {
@@ -468,13 +468,14 @@ function createListPage(container, config) {
   // Filters
   if (filters && filters.length > 0) {
     html += `<div class="filter-area">
-      <div class="filter-left">`;
+      <div class="filter-left">${filterLeftHtml}`;
     filters.forEach(f => {
       html += `<select class="filter-select" id="filter_${collection}_${f.key}" onchange="applyFilters('${collection}')">
         <option value="">${f.label}</option>
         ${f.options.map(o => `<option value="${o}">${o}</option>`).join('')}
       </select>`;
     });
+    html += renderFilterButtons(collection, filterButtons);
     html += `</div>
       <div class="filter-right">
         <button class="btn btn-secondary btn-sm" onclick="resetFilters('${collection}')"><i class="fas fa-undo"></i> 초기화</button>
@@ -490,7 +491,7 @@ function createListPage(container, config) {
     </div>`;
   } else {
     html += `<div class="filter-area">
-      <div class="filter-left"></div>
+      <div class="filter-left">${filterLeftHtml}${renderFilterButtons(collection, filterButtons)}</div>
       <div class="filter-right">
         <button class="btn btn-secondary btn-sm" onclick="resetFilters('${collection}')"><i class="fas fa-undo"></i> 초기화</button>
         <input type="text" class="search-input" id="search_${collection}" placeholder="검색..." onkeyup="if(event.key==='Enter')applyFilters('${collection}')">
@@ -524,6 +525,45 @@ function createListPage(container, config) {
   
   // Load data
   loadCollectionData(collection, columns);
+}
+
+function renderFilterButtons(collection, filterButtons = []) {
+  if (!filterButtons.length) return '';
+  const state = AppState.pageStates[collection];
+  return filterButtons.map(filter => {
+    const selectedValue = state?.filters?.[filter.key] || '';
+    const buttons = [
+      { value: '', label: '전체' },
+      ...filter.options.map(option => ({ value: option, label: option }))
+    ];
+    return buttons.map(button => `
+      <button type="button"
+        class="filter-btn ${selectedValue === button.value ? 'active' : ''}"
+        data-filter-collection="${collection}"
+        data-filter-key="${filter.key}"
+        data-filter-value="${button.value}"
+        onclick="applyButtonFilter('${collection}','${filter.key}',${JSON.stringify(button.value)})">
+        ${button.label}
+      </button>
+    `).join('');
+  }).join('');
+}
+
+function updateFilterButtonStates(collection) {
+  $$(`[data-filter-collection="${collection}"]`).forEach(button => {
+    const state = AppState.pageStates[collection];
+    const selectedValue = state?.filters?.[button.dataset.filterKey] || '';
+    button.classList.toggle('active', selectedValue === button.dataset.filterValue);
+  });
+}
+
+function applyButtonFilter(collection, key, value) {
+  const state = AppState.pageStates[collection];
+  if (!state) return;
+  if (value) state.filters[key] = value;
+  else delete state.filters[key];
+  updateFilterButtonStates(collection);
+  applyFilters(collection);
 }
 
 function renderSaveBar(collection) {
@@ -687,8 +727,9 @@ function applyFilters(collection) {
   if (config && config.filters) {
     config.filters.forEach(f => {
       const filterEl = $(`#filter_${collection}_${f.key}`);
-      if (filterEl && filterEl.value) {
-        state.filters[f.key] = filterEl.value;
+      const filterValue = filterEl ? filterEl.value : (state.filters[f.key] || '');
+      if (filterValue) {
+        state.filters[f.key] = filterValue;
         filtered = filtered.filter(item => {
           const itemValue = collection === 'pvpPatch' && f.key === 'type'
             ? (Array.isArray(item[f.key])
@@ -696,8 +737,8 @@ function applyFilters(collection) {
               : normalizePvpType(item[f.key]))
             : item[f.key];
           const filterValue = collection === 'pvpPatch' && f.key === 'type'
-            ? normalizePvpType(filterEl.value)
-            : filterEl.value;
+            ? normalizePvpType(filterValue)
+            : filterValue;
           return Array.isArray(itemValue)
             ? itemValue.includes(filterValue)
             : itemValue === filterValue;
@@ -749,6 +790,7 @@ function resetFilters(collection) {
       if (filterEl) filterEl.value = '';
     });
   }
+  updateFilterButtonStates(collection);
   
   state.filteredData = [...state.data];
   const columns = getPageColumns(collection);
@@ -797,7 +839,8 @@ function renderTable(collection, columns) {
   const pageData = state.filteredData.slice(start, end);
   
   let html = '<table><thead><tr>';
-  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_' + collection + '" onchange="toggleSelectAll(\'' + collection + '\')"></th>';
+  const allPageItemsSelected = areAllPageItemsSelected(collection, pageData);
+  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_' + collection + '" ' + (allPageItemsSelected ? 'checked' : '') + ' onchange="toggleSelectAll(\'' + collection + '\')"></th>';
   columns.forEach(col => { html += `<th>${col.label}</th>`; });
   html += '<th>작업</th></tr></thead><tbody>';
   
@@ -928,6 +971,11 @@ function renderPagination(collection) {
   container.innerHTML = html;
 }
 
+function areAllPageItemsSelected(collection, pageData) {
+  const state = AppState.pageStates[collection];
+  return Boolean(pageData.length && state && pageData.every(item => state.selectedIds.has(item.id)));
+}
+
 function goToPage(collection, page) {
   const state = AppState.pageStates[collection];
   if (!state) return;
@@ -974,6 +1022,17 @@ function toggleSelect(collection, id) {
     state.selectedIds.delete(id);
   } else {
     state.selectedIds.add(id);
+  }
+
+  const specializedRenderers = {
+    members: renderMembersTable,
+    permissions: renderPermissionsTable,
+    support: renderSupportTable
+  };
+  if (specializedRenderers[collection]) {
+    specializedRenderers[collection]();
+  } else {
+    renderTable(collection, getPageColumns(collection));
   }
 }
 
@@ -1435,7 +1494,8 @@ function renderMembersTable() {
   const pageData = state.filteredData.slice(start, end);
   
   let html = '<table><thead><tr>';
-  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_members" onchange="toggleSelectAll(\'members\')"></th>';
+  const allPageItemsSelected = areAllPageItemsSelected('members', pageData);
+  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_members" ' + (allPageItemsSelected ? 'checked' : '') + ' onchange="toggleSelectAll(\'members\')"></th>';
   html += '<th>멤버</th><th>UID</th><th>닉네임 변경 이력</th><th>메모</th><th>작업</th>';
   html += '</tr></thead><tbody>';
   
@@ -1631,7 +1691,8 @@ function renderPermissionsTable() {
   const pageData = state.filteredData.slice(start, end);
   
   let html = '<table><thead><tr>';
-  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_permissions" onchange="toggleSelectAll(\'permissions\')"></th>';
+  const allPageItemsSelected = areAllPageItemsSelected('permissions', pageData);
+  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_permissions" ' + (allPageItemsSelected ? 'checked' : '') + ' onchange="toggleSelectAll(\'permissions\')"></th>';
   html += '<th>멤버</th><th>이메일</th><th>멤버 관리 권한</th><th>스튜디오 권한</th><th>작업</th>';
   html += '</tr></thead><tbody>';
   
@@ -1791,7 +1852,8 @@ function renderSupportTable() {
   const pageData = state.filteredData.slice(start, end);
   
   let html = '<table><thead><tr>';
-  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_support" onchange="toggleSelectAll(\'support\')"></th>';
+  const allPageItemsSelected = areAllPageItemsSelected('support', pageData);
+  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_support" ' + (allPageItemsSelected ? 'checked' : '') + ' onchange="toggleSelectAll(\'support\')"></th>';
   html += '<th>ID</th><th>날짜</th><th>제목</th><th>글쓴이</th><th>문의내용 확인</th><th>문의내용 답변</th><th>관리자</th><th>작업</th>';
   html += '</tr></thead><tbody>';
   
@@ -2082,6 +2144,11 @@ function getPageFilterConfig(collection) {
       filters: [
         { key: 'type', label: '타입', options: ['버프', '너프', '기능 수정', '신규', 'Up Comming'] }
       ]
+    },
+    boards: {
+      filters: [
+        { key: 'category', label: '카테고리', options: ['자유', '정보', '질문', '자랑'] }
+      ]
     }
   };
   return configs[collection] || null;
@@ -2359,7 +2426,17 @@ function renderCharactersPage(container) { createListPage(container, { title: '�
 function renderSupportCharactersPage(container) { createListPage(container, { title: '현질 서폿 캐릭터 관리', collection: 'supportCharacters', columns: getPageColumns('supportCharacters'), filters: getPageFilterConfig('supportCharacters')?.filters, hasAdd: true, hasSaveBar: true }); }
 function renderPvPPatchPage(container) { createListPage(container, { title: 'PvP 패치 관리', collection: 'pvpPatch', columns: getPageColumns('pvpPatch'), filters: getPageFilterConfig('pvpPatch')?.filters, hasAdd: true, hasSaveBar: true }); }
 function renderPatchNotesPage(container) { createListPage(container, { title: '패치노트 관리', collection: 'patchNotes', columns: getPageColumns('patchNotes'), filters: null, hasAdd: true, hasSaveBar: true }); }
-function renderBoardsPage(container) { createListPage(container, { title: '게시판 관리', collection: 'boards', columns: getPageColumns('boards'), filters: null, hasAdd: true, hasSaveBar: true }); }
+function renderBoardsPage(container) {
+  createListPage(container, {
+    title: '게시판 관리',
+    collection: 'boards',
+    columns: getPageColumns('boards'),
+    filters: null,
+    filterButtons: getPageFilterConfig('boards')?.filters,
+    hasAdd: true,
+    hasSaveBar: true
+  });
+}
 function renderEventsPage(container) { createListPage(container, { title: '이벤트 관리', collection: 'events', columns: getPageColumns('events'), filters: null, hasAdd: true, hasSaveBar: true }); }
 function renderNoticesPage(container) { createListPage(container, { title: '공지사항 관리', collection: 'notices', columns: getPageColumns('notices'), filters: null, hasAdd: true, hasSaveBar: true }); }
 
@@ -2436,9 +2513,10 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#mobileLogoutBtn').addEventListener('click', handleLogout);
   
   // User page links
-  $('#viewUserPageBtn').addEventListener('click', () => window.open('https://fighting-path-patch.firebaseapp.com', '_blank'));
-  $('#userPageLink').addEventListener('click', () => window.open('https://fighting-path-patch.firebaseapp.com', '_blank'));
-  $('#mobileUserPageLink').addEventListener('click', () => window.open('https://fighting-path-patch.firebaseapp.com', '_blank'));
+  const userPageUrl = 'https://kimnatsu.github.io/STGFPPatch_V2/ko/Main.html#home';
+  $('#viewUserPageBtn').addEventListener('click', () => window.open(userPageUrl, '_blank'));
+  $('#userPageLink').addEventListener('click', () => window.open(userPageUrl, '_blank'));
+  $('#mobileUserPageLink').addEventListener('click', () => window.open(userPageUrl, '_blank'));
   
   // Modal overlay click to close
   $('#modalOverlay').addEventListener('click', (e) => {
