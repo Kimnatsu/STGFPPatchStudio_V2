@@ -2446,6 +2446,7 @@ function toggleSidebar() {
   const collapseBtn = $('#sidebarCollapseBtn');
   sidebar.classList.toggle('collapsed');
   AppState.sidebarCollapsed = sidebar.classList.contains('collapsed');
+  document.body.classList.toggle('sidebar-collapsed', AppState.sidebarCollapsed);
 
   if (expandBtn) expandBtn.style.display = 'none';
   if (collapseBtn) {
@@ -2457,6 +2458,7 @@ function expandSidebar() {
   const sidebar = $('#sidebar');
   sidebar.classList.remove('collapsed');
   AppState.sidebarCollapsed = false;
+  document.body.classList.remove('sidebar-collapsed');
   const expandBtn = $('#sidebarExpandBtn');
   const collapseBtn = $('#sidebarCollapseBtn');
   if (expandBtn) expandBtn.style.display = 'none';
