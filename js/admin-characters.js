@@ -5,7 +5,7 @@
     collection: 'characters',
     columns: [
       { key: 'id', label: 'ID', type: 'default' },
-      { key: 'imageUrl', label: '이미지', type: 'image' },
+      { key: 'img', label: '이미지', type: 'image' },
       { key: 'name', label: '이름', type: 'default' },
       { key: 'grade', label: '등급', type: 'default' },
       { key: 'attribute', label: '속성', type: 'default' },

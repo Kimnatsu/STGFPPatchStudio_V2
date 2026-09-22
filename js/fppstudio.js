@@ -724,7 +724,11 @@ function renderTable(collection, columns) {
 }
 
 function renderCellContent(col, item, collection) {
-  const value = item[col.key];
+  // 공개 서비스의 캐릭터 컬렉션은 img 필드를 사용합니다.
+  // imageUrl은 기존 관리자 데이터와의 호환을 위해 fallback으로 유지합니다.
+  const value = col.key === 'img'
+    ? (item.img || item.imageUrl)
+    : item[col.key];
   
   switch(col.type) {
     case 'image':
@@ -900,7 +904,7 @@ async function submitAddItem(collection) {
     if (currentImageUploadError) throw currentImageUploadError;
     data.createdAt = FieldValue.serverTimestamp();
     data.adminEmail = AppState.currentUser.email;
-    if (currentImageUrl) data.imageUrl = currentImageUrl;
+    if (currentImageUrl) data[getImageField(collection)] = currentImageUrl;
     
     const docRef = await db.collection(collection).add(data);
     
@@ -940,7 +944,7 @@ async function editItem(collection, id) {
   `);
   
   if (config.hasImage) {
-    setupImageUpload(collection, item.imageUrl);
+    setupImageUpload(collection, getStoredImageUrl(collection, item));
   }
 }
 
@@ -961,8 +965,9 @@ async function submitEditItem(collection, id) {
   try {
     await currentImageUploadPromise;
     if (currentImageUploadError) throw currentImageUploadError;
-    if (currentImageUrl && currentImageUrl !== item.imageUrl) {
-      data.imageUrl = currentImageUrl;
+    const storedImageUrl = getStoredImageUrl(collection, item);
+    if (currentImageUrl && currentImageUrl !== storedImageUrl) {
+      data[getImageField(collection)] = currentImageUrl;
     }
     
     data.updatedAt = FieldValue.serverTimestamp();
@@ -1036,6 +1041,19 @@ let currentImageUploadPromise = null;
 let currentImageUploadError = null;
 const IMAGE_EDITOR_COLLECTIONS = new Set(['banners', 'characters', 'supportCharacters']);
 const SQUARE_IMAGE_EDITOR_COLLECTIONS = new Set(['characters', 'supportCharacters']);
+const IMAGE_FIELD_BY_COLLECTION = Object.freeze({
+  characters: 'img',
+  supportCharacters: 'img'
+});
+
+function getImageField(collection) {
+  return IMAGE_FIELD_BY_COLLECTION[collection] || 'imageUrl';
+}
+
+function getStoredImageUrl(collection, item) {
+  if (!item) return null;
+  return item[getImageField(collection)] || item.imageUrl || item.img || null;
+}
 
 function getImageEditorOptions(collection) {
   if (!SQUARE_IMAGE_EDITOR_COLLECTIONS.has(collection)) return {};
@@ -1873,7 +1891,7 @@ function getPageColumns(collection) {
     ],
     characters: [
       { key: 'id', label: 'ID', type: 'default' },
-      { key: 'imageUrl', label: '이미지', type: 'image' },
+      { key: 'img', label: '이미지', type: 'image' },
       { key: 'name', label: '이름', type: 'default' },
       { key: 'grade', label: '등급', type: 'default' },
       { key: 'attribute', label: '속성', type: 'default' },
@@ -1883,7 +1901,7 @@ function getPageColumns(collection) {
     ],
     supportCharacters: [
       { key: 'id', label: 'ID', type: 'default' },
-      { key: 'imageUrl', label: '이미지', type: 'image' },
+      { key: 'img', label: '이미지', type: 'image' },
       { key: 'name', label: '이름', type: 'default' },
       { key: 'grade', label: '등급', type: 'default' },
       { key: 'attribute', label: '속성', type: 'default' },
@@ -2119,7 +2137,7 @@ function getEditFormConfig(collection, item) {
       hasImage: true,
       formHtml: `
         <div class="form-group"><label>이름</label><input type="text" class="form-control" id="edit_name" value="${item.name || ''}"></div>
-        <div class="form-group"><label>이미지</label><div class="image-upload" id="imageUpload_characters">${item.imageUrl ? `<img src="${item.imageUrl}" class="image-preview">` : '<i class="fas fa-cloud-upload-alt"></i><p>클릭하여 이미지 업로드</p>'}</div></div>
+        <div class="form-group"><label>이미지</label><div class="image-upload" id="imageUpload_characters">${getStoredImageUrl('characters', item) ? `<img src="${getStoredImageUrl('characters', item)}" class="image-preview">` : '<i class="fas fa-cloud-upload-alt"></i><p>클릭하여 이미지 업로드</p>'}</div></div>
         <div class="form-group"><label>등급</label><select class="form-control" id="edit_grade"><option value="전설" ${item.grade==='전설'?'selected':''}>전설</option><option value="영웅" ${item.grade==='영웅'?'selected':''}>영웅</option><option value="희귀" ${item.grade==='희귀'?'selected':''}>희귀</option><option value="일반" ${item.grade==='일반'?'selected':''}>일반</option></select></div>
         <div class="form-group"><label>속성</label><select class="form-control" id="edit_attribute"><option value="화염" ${item.attribute==='화염'?'selected':''}>화염</option><option value="냉기" ${item.attribute==='냉기'?'selected':''}>냉기</option><option value="전기" ${item.attribute==='전기'?'selected':''}>전기</option><option value="암흑" ${item.attribute==='암흑'?'selected':''}>암흑</option><option value="광명" ${item.attribute==='광명'?'selected':''}>광명</option></select></div>
         <div class="form-group"><label>타입</label><select class="form-control" id="edit_type"><option value="전사" ${item.type==='전사'?'selected':''}>전사</option><option value="마법사" ${item.type==='마법사'?'selected':''}>마법사</option><option value="궁수" ${item.type==='궁수'?'selected':''}>궁수</option><option value="탱커" ${item.type==='탱커'?'selected':''}>탱커</option><option value="서포터" ${item.type==='서포터'?'selected':''}>서포터</option></select></div>
@@ -2136,7 +2154,7 @@ function getEditFormConfig(collection, item) {
       hasImage: true,
       formHtml: `
         <div class="form-group"><label>이름</label><input type="text" class="form-control" id="edit_name" value="${item.name || ''}"></div>
-        <div class="form-group"><label>이미지</label><div class="image-upload" id="imageUpload_supportCharacters">${item.imageUrl ? `<img src="${item.imageUrl}" class="image-preview">` : '<i class="fas fa-cloud-upload-alt"></i><p>클릭하여 이미지 업로드</p>'}</div></div>
+        <div class="form-group"><label>이미지</label><div class="image-upload" id="imageUpload_supportCharacters">${getStoredImageUrl('supportCharacters', item) ? `<img src="${getStoredImageUrl('supportCharacters', item)}" class="image-preview">` : '<i class="fas fa-cloud-upload-alt"></i><p>클릭하여 이미지 업로드</p>'}</div></div>
         <div class="form-group"><label>등급</label><select class="form-control" id="edit_grade"><option value="전설" ${item.grade==='전설'?'selected':''}>전설</option><option value="영웅" ${item.grade==='영웅'?'selected':''}>영웅</option><option value="희귀" ${item.grade==='희귀'?'selected':''}>희귀</option><option value="일반" ${item.grade==='일반'?'selected':''}>일반</option></select></div>
         <div class="form-group"><label>속성</label><select class="form-control" id="edit_attribute"><option value="화염" ${item.attribute==='화염'?'selected':''}>화염</option><option value="냉기" ${item.attribute==='냉기'?'selected':''}>냉기</option><option value="전기" ${item.attribute==='전기'?'selected':''}>전기</option><option value="암흑" ${item.attribute==='암흑'?'selected':''}>암흑</option><option value="광명" ${item.attribute==='광명'?'selected':''}>광명</option></select></div>
         <div class="form-check"><input type="checkbox" id="edit_published" ${item.published ? 'checked' : ''}><label>노출</label></div>
