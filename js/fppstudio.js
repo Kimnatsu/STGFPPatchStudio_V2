@@ -848,6 +848,7 @@ function toggleSelect(collection, id) {
 // ===== CRUD Operations =====
 async function handleAddItem(collection) {
   currentImageFile = null;
+  currentImagePreviewUrl = null;
   const config = getAddFormConfig(collection);
   if (!config) return;
   
@@ -903,6 +904,7 @@ async function editItem(collection, id) {
   if (!item) return;
   
   currentImageFile = null;
+  currentImagePreviewUrl = null;
   const config = getEditFormConfig(collection, item);
   if (!config) return;
   
@@ -1000,15 +1002,16 @@ async function toggleBoardVisibility(id) {
 
 // ===== Image Upload =====
 let currentImageFile = null;
+let currentImagePreviewUrl = null;
+const IMAGE_EDITOR_COLLECTIONS = new Set(['banners', 'characters', 'supportCharacters']);
 
 function setupImageUpload(collection, existingUrl = null) {
   const uploadArea = $(`#imageUpload_${collection}`);
   if (!uploadArea) return;
-  
-  if (existingUrl) {
-    uploadArea.innerHTML = `<img src="${existingUrl}" class="image-preview"><p style="margin-top:8px;font-size:12px;color:var(--text-secondary)">클릭하여 이미지 변경</p>`;
-  }
-  
+
+  currentImagePreviewUrl = existingUrl || currentImagePreviewUrl || null;
+  if (currentImagePreviewUrl) renderImageUploadPreview(collection, currentImagePreviewUrl);
+
   uploadArea.addEventListener('click', () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -1016,15 +1019,64 @@ function setupImageUpload(collection, existingUrl = null) {
     input.onchange = (e) => {
       const file = e.target.files[0];
       if (file) {
-        currentImageFile = file;
+        if (!file.type.startsWith('image/')) {
+          showToast('이미지 파일만 업로드할 수 있습니다.', 'warning');
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          showToast('이미지는 10MB 이하로 선택해 주세요.', 'warning');
+          return;
+        }
         const reader = new FileReader();
         reader.onload = (ev) => {
-          uploadArea.innerHTML = `<img src="${ev.target.result}" class="image-preview"><p style="margin-top:8px;font-size:12px;color:var(--text-secondary)">클릭하여 이미지 변경</p>`;
+          currentImageFile = file;
+          currentImagePreviewUrl = ev.target.result;
+          renderImageUploadPreview(collection, currentImagePreviewUrl);
+          if (IMAGE_EDITOR_COLLECTIONS.has(collection)) {
+            openImageEditorForUpload(collection);
+          }
         };
         reader.readAsDataURL(file);
       }
     };
     input.click();
+  });
+}
+
+function renderImageUploadPreview(collection, imageUrl) {
+  const uploadArea = $(`#imageUpload_${collection}`);
+  if (!uploadArea) return;
+  uploadArea.classList.add('has-image');
+  uploadArea.innerHTML = `
+    <img src="${imageUrl}" class="image-preview" alt="선택한 이미지">
+    <div class="image-upload-caption">클릭하여 이미지 변경</div>
+    ${IMAGE_EDITOR_COLLECTIONS.has(collection) ? `
+      <button type="button" class="image-upload-edit" onclick="event.stopPropagation(); openImageEditorForUpload('${collection}')">
+        <i class="fas fa-sliders-h"></i> 이미지 편집
+      </button>
+    ` : ''}
+  `;
+}
+
+function openImageEditorForUpload(collection) {
+  if (!IMAGE_EDITOR_COLLECTIONS.has(collection) || !window.FPPImageEditor) return;
+  const uploadArea = $(`#imageUpload_${collection}`);
+  const image = uploadArea?.querySelector('img');
+  const source = currentImageFile || image?.src;
+  if (!source) {
+    showToast('먼저 이미지를 선택해 주세요.', 'info');
+    return;
+  }
+
+  window.FPPImageEditor.open(source, file => {
+    currentImageFile = file;
+    const reader = new FileReader();
+    reader.onload = event => {
+      currentImagePreviewUrl = event.target.result;
+      renderImageUploadPreview(collection, currentImagePreviewUrl);
+    };
+    reader.readAsDataURL(file);
+    showToast('이미지를 편집했습니다. 저장 버튼을 눌러 반영하세요.', 'success');
   });
 }
 
