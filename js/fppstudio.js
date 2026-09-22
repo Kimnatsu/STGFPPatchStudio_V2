@@ -582,11 +582,13 @@ function renderSaveBar(collection) {
     </div>
   `;
   document.body.appendChild(saveBar);
+  document.body.classList.add('has-save-bar');
 }
 
 function removeSaveBar() {
   const existing = $('#saveBar');
   if (existing) existing.remove();
+  document.body.classList.remove('has-save-bar');
 }
 
 // ===== Data Loading =====

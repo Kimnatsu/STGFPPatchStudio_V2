@@ -557,6 +557,10 @@ body {
   background: var(--bg);
 }
 
+body.has-save-bar .main-content {
+  padding-bottom: 88px;
+}
+
 /* ===== Content Header ===== */
 .content-header {
   display: flex;
@@ -1762,6 +1766,9 @@ select.form-control {
   }
   .main-content {
     padding: 16px;
+  }
+  body.has-save-bar .main-content {
+    padding-bottom: 80px;
   }
   .content-header {
     flex-direction: column;
