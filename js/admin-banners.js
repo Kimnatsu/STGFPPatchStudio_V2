@@ -7,9 +7,9 @@
       { key: 'id', label: 'ID', type: 'default' },
       { key: 'imageUrl', label: '미리보기', type: 'preview' },
       { key: 'title', label: '제목', type: 'truncate' },
-      { key: 'active', label: '활성화 상태', type: 'toggle' },
-      { key: 'published', label: '노출 상태', type: 'toggle' },
-      { key: 'adminEmail', label: '관리자', type: 'default' }
+      { key: 'isActive', label: '활성화 상태', type: 'toggle' },
+      { key: 'visible', label: '노출 상태', type: 'toggle' },
+      { key: 'updatedBy', label: '관리자', type: 'default' }
     ],
     render(container) {
       createListPage(container, {

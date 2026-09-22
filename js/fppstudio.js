@@ -585,12 +585,16 @@ async function hydrateCollectionData(collection, snapshot) {
     rows.push({ id: doc.id, ...doc.data() });
   });
 
-  if (collection === 'characters' || collection === 'supportCharacters' || collection === 'patchNotes') {
+  if (collection === 'banners'
+    || collection === 'characters'
+    || collection === 'supportCharacters'
+    || collection === 'patchNotes'
+    || collection === 'notices') {
     return rows.map(item => ({
       ...item,
       visible: item.visible ?? item.published ?? true,
       updatedBy: item.updatedBy || item.adminEmail || '-',
-      ...(collection === 'patchNotes'
+      ...(collection === 'patchNotes' || collection === 'notices'
         ? { author: item.author || (item.updatedBy || item.adminEmail ? '관리자' : '-') }
         : {})
     }));
@@ -1990,9 +1994,9 @@ function getPageColumns(collection) {
       { key: 'id', label: 'ID', type: 'default' },
       { key: 'imageUrl', label: '미리보기', type: 'preview' },
       { key: 'title', label: '제목', type: 'truncate' },
-      { key: 'active', label: '활성화 상태', type: 'toggle' },
-      { key: 'published', label: '노출 상태', type: 'toggle' },
-      { key: 'adminEmail', label: '관리자', type: 'default' }
+      { key: 'isActive', label: '활성화 상태', type: 'toggle' },
+      { key: 'visible', label: '노출 상태', type: 'toggle' },
+      { key: 'updatedBy', label: '관리자', type: 'default' }
     ],
     characters: [
       { key: 'id', label: 'ID', type: 'default' },
@@ -2049,8 +2053,8 @@ function getPageColumns(collection) {
       { key: 'createdAt', label: '날짜', type: 'date' },
       { key: 'title', label: '제목', type: 'truncate' },
       { key: 'author', label: '글쓴이', type: 'default' },
-      { key: 'published', label: '노출 상태', type: 'toggle' },
-      { key: 'adminEmail', label: '관리자', type: 'default' }
+      { key: 'visible', label: '노출 상태', type: 'toggle' },
+      { key: 'updatedBy', label: '관리자', type: 'default' }
     ]
   };
   return configs[collection] || [];
@@ -2098,8 +2102,8 @@ function getAddFormConfig(collection) {
       getData: () => ({
         title: $('#add_title').value || null,
         link: $('#add_link').value || null,
-        active: $('#add_active').checked,
-        published: $('#add_published').checked,
+        isActive: $('#add_active').checked,
+        visible: $('#add_published').checked,
         imageFile: currentImageFile
       })
     },
@@ -2202,14 +2206,14 @@ function getAddFormConfig(collection) {
       hasImage: false,
       formHtml: `
         <div class="form-group"><label>제목</label><input type="text" class="form-control" id="add_title" placeholder="공지사항 제목"></div>
-        <div class="form-group"><label>글쓴이</label><input type="text" class="form-control" id="add_author" value="${AppState.currentUser?.email?.split('@')[0] || '관리자'}"></div>
+        <div class="form-group"><label>글쓴이</label><input type="text" class="form-control" id="add_author" value="관리자" readonly></div>
         <div class="form-group"><label>본문</label><textarea class="form-control" id="add_content" rows="8" placeholder="공지사항 내용을 입력하세요"></textarea></div>
         <div class="form-check"><input type="checkbox" id="add_published" checked><label>노출</label></div>
       `,
       getData: () => {
         const title = $('#add_title').value;
         if (!title) { showToast('제목을 입력하세요.', 'warning'); return null; }
-        return { title, author: $('#add_author').value, content: $('#add_content').value, published: $('#add_published').checked, imageFile: null };
+        return { title, author: '관리자', content: $('#add_content').value, visible: $('#add_published').checked, imageFile: null };
       }
     }
   };
@@ -2225,14 +2229,14 @@ function getEditFormConfig(collection, item) {
         <div class="form-group"><label>제목</label><input type="text" class="form-control" id="edit_title" value="${item.title || ''}"></div>
         <div class="form-group"><label>이미지</label><div class="image-upload" id="imageUpload_banners">${item.imageUrl ? `<img src="${item.imageUrl}" class="image-preview">` : '<i class="fas fa-cloud-upload-alt"></i><p>클릭하여 이미지 업로드</p>'}</div></div>
         <div class="form-group"><label>링크 URL</label><input type="text" class="form-control" id="edit_link" value="${item.link || ''}"></div>
-        <div class="form-check"><input type="checkbox" id="edit_active" ${item.active ? 'checked' : ''}><label>활성화</label></div>
-        <div class="form-check mt-2"><input type="checkbox" id="edit_published" ${item.published ? 'checked' : ''}><label>노출</label></div>
+        <div class="form-check"><input type="checkbox" id="edit_active" ${item.isActive ? 'checked' : ''}><label>활성화</label></div>
+        <div class="form-check mt-2"><input type="checkbox" id="edit_published" ${item.visible !== false ? 'checked' : ''}><label>노출</label></div>
       `,
       getData: () => ({
         title: $('#edit_title').value || null,
         link: $('#edit_link').value || null,
-        active: $('#edit_active').checked,
-        published: $('#edit_published').checked,
+        isActive: $('#edit_active').checked,
+        visible: $('#edit_published').checked,
         imageFile: currentImageFile
       })
     },
@@ -2335,14 +2339,14 @@ function getEditFormConfig(collection, item) {
       hasImage: false,
       formHtml: `
         <div class="form-group"><label>제목</label><input type="text" class="form-control" id="edit_title" value="${item.title || ''}"></div>
-        <div class="form-group"><label>글쓴이</label><input type="text" class="form-control" id="edit_author" value="${item.author || ''}"></div>
+        <div class="form-group"><label>글쓴이</label><input type="text" class="form-control" id="edit_author" value="관리자" readonly></div>
         <div class="form-group"><label>본문</label><textarea class="form-control" id="edit_content" rows="8">${item.content || ''}</textarea></div>
-        <div class="form-check"><input type="checkbox" id="edit_published" ${item.published ? 'checked' : ''}><label>노출</label></div>
+        <div class="form-check"><input type="checkbox" id="edit_published" ${item.visible !== false ? 'checked' : ''}><label>노출</label></div>
       `,
       getData: () => {
         const title = $('#edit_title').value;
         if (!title) { showToast('제목을 입력하세요.', 'warning'); return null; }
-        return { title, author: $('#edit_author').value, content: $('#edit_content').value, published: $('#edit_published').checked, imageFile: null };
+        return { title, author: '관리자', content: $('#edit_content').value, visible: $('#edit_published').checked, imageFile: null };
       }
     }
   };
