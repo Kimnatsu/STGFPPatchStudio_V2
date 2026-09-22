@@ -2452,13 +2452,13 @@ function renderNoticesPage(container) { createListPage(container, { title: '공�
 function toggleSidebar() {
   const sidebar = $('#sidebar');
   const expandBtn = $('#sidebarExpandBtn');
+  const collapseBtn = $('#sidebarCollapseBtn');
   sidebar.classList.toggle('collapsed');
   AppState.sidebarCollapsed = sidebar.classList.contains('collapsed');
-  
-  if (AppState.sidebarCollapsed) {
-    expandBtn.style.display = 'flex';
-  } else {
-    expandBtn.style.display = 'none';
+
+  if (expandBtn) expandBtn.style.display = 'none';
+  if (collapseBtn) {
+    collapseBtn.title = AppState.sidebarCollapsed ? '사이드바 펼치기' : '사이드바 접기';
   }
 }
 
@@ -2466,7 +2466,10 @@ function expandSidebar() {
   const sidebar = $('#sidebar');
   sidebar.classList.remove('collapsed');
   AppState.sidebarCollapsed = false;
-  $('#sidebarExpandBtn').style.display = 'none';
+  const expandBtn = $('#sidebarExpandBtn');
+  const collapseBtn = $('#sidebarCollapseBtn');
+  if (expandBtn) expandBtn.style.display = 'none';
+  if (collapseBtn) collapseBtn.title = '사이드바 접기';
 }
 
 function openMobileMenu() {
