@@ -5,7 +5,7 @@
     collection: 'pvpPatch',
     columns: [
       { key: 'patchDate', label: '패치 날짜', type: 'date' },
-      { key: 'charId', label: '캐릭터 ID', type: 'default' },
+      { key: 'displayCharId', label: '캐릭터 ID', type: 'default' },
       { key: 'name', label: '캐릭터 이름', type: 'default' },
       { key: 'type', label: '타입', type: 'pvpType' },
       { key: 'visible', label: '노출 상태', type: 'toggle' },

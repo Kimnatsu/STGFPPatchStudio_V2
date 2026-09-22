@@ -625,12 +625,26 @@ async function hydrateCollectionData(collection, snapshot) {
     return {
       ...item,
       charId: characterId,
+      displayCharId: isSupportCharacter ? `[서폿] ${supportId ?? characterId}` : characterId,
       name: item.name || character?.name || '-',
       type: patchTypes.length ? patchTypes : item.type || [],
       visible: item.visible ?? item.published ?? true,
       updatedBy: item.updatedBy || item.adminEmail || '-'
     };
+  }).sort((a, b) => {
+    const dateDifference = getSortableDateValue(b.patchDate || b.date || b.createdAt)
+      - getSortableDateValue(a.patchDate || a.date || a.createdAt);
+    if (dateDifference !== 0) return dateDifference;
+    return getSortableDateValue(b.createdAt) - getSortableDateValue(a.createdAt);
   });
+}
+
+function getSortableDateValue(value) {
+  if (!value) return 0;
+  if (typeof value.toDate === 'function') return value.toDate().getTime();
+  if (typeof value.seconds === 'number') return value.seconds * 1000;
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 function buildCharacterMap(snapshot) {
@@ -2000,7 +2014,7 @@ function getPageColumns(collection) {
     ],
     pvpPatch: [
       { key: 'patchDate', label: '패치 날짜', type: 'date' },
-      { key: 'charId', label: '캐릭터 ID', type: 'default' },
+      { key: 'displayCharId', label: '캐릭터 ID', type: 'default' },
       { key: 'name', label: '캐릭터 이름', type: 'default' },
       { key: 'type', label: '타입', type: 'pvpType' },
       { key: 'visible', label: '노출 상태', type: 'toggle' },
