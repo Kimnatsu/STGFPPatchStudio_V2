@@ -585,6 +585,17 @@ async function hydrateCollectionData(collection, snapshot) {
     rows.push({ id: doc.id, ...doc.data() });
   });
 
+  if (collection === 'characters' || collection === 'supportCharacters' || collection === 'patchNotes') {
+    return rows.map(item => ({
+      ...item,
+      visible: item.visible ?? item.published ?? true,
+      updatedBy: item.updatedBy || item.adminEmail || '-',
+      ...(collection === 'patchNotes'
+        ? { author: item.author || (item.updatedBy || item.adminEmail ? '관리자' : '-') }
+        : {})
+    }));
+  }
+
   if (collection !== 'pvpPatch') return rows;
 
   // PvP 패치 문서는 캐릭터 이름을 저장하지 않고 charId/supportCharId만
@@ -982,6 +993,7 @@ async function submitAddItem(collection) {
     if (currentImageUploadError) throw currentImageUploadError;
     data.createdAt = FieldValue.serverTimestamp();
     data.adminEmail = AppState.currentUser.email;
+    data.updatedBy = data.updatedBy || AppState.currentUser.email;
     if (currentImageUrl) data[getImageField(collection)] = currentImageUrl;
     
     const docRef = await db.collection(collection).add(data);
@@ -1049,6 +1061,7 @@ async function submitEditItem(collection, id) {
     }
     
     data.updatedAt = FieldValue.serverTimestamp();
+    data.updatedBy = AppState.currentUser.email;
     await db.collection(collection).doc(id).update(data);
     
     closeModal();
@@ -1974,17 +1987,16 @@ function getPageColumns(collection) {
       { key: 'grade', label: '등급', type: 'default' },
       { key: 'attribute', label: '속성', type: 'default' },
       { key: 'type', label: '타입', type: 'default' },
-      { key: 'published', label: '노출 상태', type: 'toggle' },
-      { key: 'adminEmail', label: '관리자', type: 'default' }
+      { key: 'visible', label: '노출 상태', type: 'toggle' },
+      { key: 'updatedBy', label: '관리자', type: 'default' }
     ],
     supportCharacters: [
       { key: 'id', label: 'ID', type: 'default' },
       { key: 'img', label: '이미지', type: 'image' },
       { key: 'name', label: '이름', type: 'default' },
       { key: 'grade', label: '등급', type: 'default' },
-      { key: 'attribute', label: '속성', type: 'default' },
-      { key: 'published', label: '노출 상태', type: 'toggle' },
-      { key: 'adminEmail', label: '관리자', type: 'default' }
+      { key: 'visible', label: '노출 상태', type: 'toggle' },
+      { key: 'updatedBy', label: '관리자', type: 'default' }
     ],
     pvpPatch: [
       { key: 'patchDate', label: '패치 날짜', type: 'date' },
@@ -1999,8 +2011,8 @@ function getPageColumns(collection) {
       { key: 'createdAt', label: '날짜', type: 'date' },
       { key: 'title', label: '제목', type: 'truncate' },
       { key: 'author', label: '글쓴이', type: 'default' },
-      { key: 'published', label: '노출 상태', type: 'toggle' },
-      { key: 'adminEmail', label: '관리자', type: 'default' }
+      { key: 'visible', label: '노출 상태', type: 'toggle' },
+      { key: 'updatedBy', label: '관리자', type: 'default' }
     ],
     boards: [
       { key: 'id', label: 'ID', type: 'default' },
@@ -2132,14 +2144,14 @@ function getAddFormConfig(collection) {
       hasImage: false,
       formHtml: `
         <div class="form-group"><label>제목</label><input type="text" class="form-control" id="add_title" placeholder="패치노트 제목"></div>
-        <div class="form-group"><label>글쓴이</label><input type="text" class="form-control" id="add_author" value="${AppState.currentUser?.email?.split('@')[0] || '관리자'}"></div>
+        <div class="form-group"><label>글쓴이</label><input type="text" class="form-control" id="add_author" value="관리자" readonly></div>
         <div class="form-group"><label>본문</label><textarea class="form-control" id="add_content" rows="8" placeholder="패치노트 내용을 입력하세요"></textarea></div>
         <div class="form-check"><input type="checkbox" id="add_published" checked><label>노출</label></div>
       `,
       getData: () => {
         const title = $('#add_title').value;
         if (!title) { showToast('제목을 입력하세요.', 'warning'); return null; }
-        return { title, author: $('#add_author').value, content: $('#add_content').value, published: $('#add_published').checked, imageFile: null };
+        return { title, author: '관리자', content: $('#add_content').value, visible: $('#add_published').checked, imageFile: null };
       }
     },
     boards: {
@@ -2265,14 +2277,14 @@ function getEditFormConfig(collection, item) {
       hasImage: false,
       formHtml: `
         <div class="form-group"><label>제목</label><input type="text" class="form-control" id="edit_title" value="${item.title || ''}"></div>
-        <div class="form-group"><label>글쓴이</label><input type="text" class="form-control" id="edit_author" value="${item.author || ''}"></div>
+        <div class="form-group"><label>글쓴이</label><input type="text" class="form-control" id="edit_author" value="관리자" readonly></div>
         <div class="form-group"><label>본문</label><textarea class="form-control" id="edit_content" rows="8">${item.content || ''}</textarea></div>
-        <div class="form-check"><input type="checkbox" id="edit_published" ${item.published ? 'checked' : ''}><label>노출</label></div>
+        <div class="form-check"><input type="checkbox" id="edit_published" ${item.visible !== false ? 'checked' : ''}><label>노출</label></div>
       `,
       getData: () => {
         const title = $('#edit_title').value;
         if (!title) { showToast('제목을 입력하세요.', 'warning'); return null; }
-        return { title, author: $('#edit_author').value, content: $('#edit_content').value, published: $('#edit_published').checked, imageFile: null };
+        return { title, author: '관리자', content: $('#edit_content').value, visible: $('#edit_published').checked, imageFile: null };
       }
     },
     boards: {

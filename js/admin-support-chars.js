@@ -8,13 +8,11 @@
       { key: 'img', label: '이미지', type: 'image' },
       { key: 'name', label: '이름', type: 'default' },
       { key: 'grade', label: '등급', type: 'default' },
-      { key: 'attribute', label: '속성', type: 'default' },
-      { key: 'published', label: '노출 상태', type: 'toggle' },
-      { key: 'adminEmail', label: '관리자', type: 'default' }
+      { key: 'visible', label: '노출 상태', type: 'toggle' },
+      { key: 'updatedBy', label: '관리자', type: 'default' }
     ],
     filters: [
-      { key: 'grade', label: '등급', options: ['전설', '영웅', '희귀', '일반'] },
-      { key: 'attribute', label: '속성', options: ['화염', '냉기', '전기', '암흑', '광명'] }
+      { key: 'grade', label: '등급', options: ['전설', '영웅', '희귀', '일반'] }
     ],
     render(container) {
       createListPage(container, {

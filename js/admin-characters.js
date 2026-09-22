@@ -10,8 +10,8 @@
       { key: 'grade', label: '등급', type: 'default' },
       { key: 'attribute', label: '속성', type: 'default' },
       { key: 'type', label: '타입', type: 'default' },
-      { key: 'published', label: '노출 상태', type: 'toggle' },
-      { key: 'adminEmail', label: '관리자', type: 'default' }
+      { key: 'visible', label: '노출 상태', type: 'toggle' },
+      { key: 'updatedBy', label: '관리자', type: 'default' }
     ],
     filters: [
       { key: 'grade', label: '등급', options: ['전설', '영웅', '희귀', '일반'] },
