@@ -95,6 +95,9 @@ function showConfirm(title, message, onConfirm) {
 
 function formatDate(timestamp) {
   if (!timestamp) return '-';
+  if (typeof timestamp === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(timestamp)) {
+    return timestamp;
+  }
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
   return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
 }
@@ -556,10 +559,7 @@ async function loadCollectionData(collection, columns) {
   
   try {
     const snapshot = await db.collection(collection).orderBy('createdAt', 'desc').get();
-    state.data = [];
-    snapshot.forEach(doc => {
-      state.data.push({ id: doc.id, ...doc.data() });
-    });
+    state.data = await hydrateCollectionData(collection, snapshot);
     state.lastSavedData = JSON.parse(JSON.stringify(state.data));
     state.loading = false;
     applyFilters(collection);
@@ -567,10 +567,7 @@ async function loadCollectionData(collection, columns) {
     // Try without orderBy
     try {
       const snapshot = await db.collection(collection).get();
-      state.data = [];
-      snapshot.forEach(doc => {
-        state.data.push({ id: doc.id, ...doc.data() });
-      });
+      state.data = await hydrateCollectionData(collection, snapshot);
       state.lastSavedData = JSON.parse(JSON.stringify(state.data));
       state.loading = false;
       applyFilters(collection);
@@ -580,6 +577,61 @@ async function loadCollectionData(collection, columns) {
       renderTable(collection, columns);
     }
   }
+}
+
+async function hydrateCollectionData(collection, snapshot) {
+  const rows = [];
+  snapshot.forEach(doc => {
+    rows.push({ id: doc.id, ...doc.data() });
+  });
+
+  if (collection !== 'pvpPatch') return rows;
+
+  // PvP 패치 문서는 캐릭터 이름을 저장하지 않고 charId/supportCharId만
+  // 저장하므로, 실제 캐릭터 컬렉션과 연결해 관리자 테이블용 값을 만듭니다.
+  const [charactersSnapshot, supportCharactersSnapshot] = await Promise.all([
+    db.collection('characters').get(),
+    db.collection('supportCharacters').get()
+  ]);
+  const characterMap = buildCharacterMap(charactersSnapshot);
+  const supportCharacterMap = buildCharacterMap(supportCharactersSnapshot);
+
+  return rows.map(item => {
+    const supportId = item.supportCharId;
+    const characterId = item.charId ?? supportId ?? '';
+    const isSupportCharacter = supportId !== null
+      && supportId !== undefined
+      && String(supportId) !== '';
+    const character = (isSupportCharacter
+      ? supportCharacterMap.get(String(supportId))
+      : characterMap.get(String(characterId)))
+      || characterMap.get(String(characterId))
+      || supportCharacterMap.get(String(characterId));
+    const patchTypes = Array.isArray(item.patches)
+      ? [...new Set(item.patches.map(patch => normalizePvpType(patch?.type)).filter(Boolean))]
+      : [];
+
+    return {
+      ...item,
+      charId: characterId,
+      name: item.name || character?.name || '-',
+      type: patchTypes.length ? patchTypes : item.type || [],
+      visible: item.visible ?? item.published ?? true,
+      updatedBy: item.updatedBy || item.adminEmail || '-'
+    };
+  });
+}
+
+function buildCharacterMap(snapshot) {
+  const map = new Map();
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    if (data.id !== undefined && data.id !== null) {
+      map.set(String(data.id), data);
+    }
+    map.set(doc.id, data);
+  });
+  return map;
 }
 
 function applyFilters(collection) {
@@ -610,9 +662,16 @@ function applyFilters(collection) {
         state.filters[f.key] = filterEl.value;
         filtered = filtered.filter(item => {
           const itemValue = collection === 'pvpPatch' && f.key === 'type'
-            ? normalizePvpType(item[f.key])
+            ? (Array.isArray(item[f.key])
+              ? item[f.key].map(normalizePvpType)
+              : normalizePvpType(item[f.key]))
             : item[f.key];
-          return itemValue === filterEl.value;
+          const filterValue = collection === 'pvpPatch' && f.key === 'type'
+            ? normalizePvpType(filterEl.value)
+            : filterEl.value;
+          return Array.isArray(itemValue)
+            ? itemValue.includes(filterValue)
+            : itemValue === filterValue;
         });
       } else {
         delete state.filters[f.key];
@@ -630,12 +689,17 @@ function applyFilters(collection) {
 
 function normalizePvpType(value) {
   const labels = {
+    buff: '버프',
     nerf: '너프',
-    조정: '기능수정',
+    fix: '기능 수정',
+    조정: '기능 수정',
+    기능수정: '기능 수정',
+    '기능 수정': '기능 수정',
+    신규: '신규',
     upcoming: 'Up Comming',
     'up coming': 'Up Comming'
   };
-  return labels[value] || value;
+  return labels[String(value).toLowerCase()] || labels[value] || value;
 }
 
 function resetFilters(collection) {
@@ -751,7 +815,21 @@ function renderCellContent(col, item, collection) {
     case 'truncate':
       return `<span class="text-ellipsis" style="max-width:200px;display:inline-block" title="${value || ''}">${value || '-'}</span>`;
     case 'pvpType': {
-      return normalizePvpType(value) || '-';
+      const types = Array.isArray(value) ? value : (value ? [value] : []);
+      if (!types.length) return '-';
+      return types.map(type => {
+        const label = normalizePvpType(type);
+        const badgeClass = label === '버프'
+          ? 'badge-success'
+          : label === '너프'
+            ? 'badge-danger'
+            : label === '기능 수정'
+              ? 'badge-warning'
+              : label === '신규'
+                ? 'badge-info'
+                : 'badge-gray';
+        return `<span class="badge ${badgeClass}" style="margin-right:4px">${label}</span>`;
+      }).join('');
     }
     case 'preview':
       return value ? `<img src="${value}" class="table-img" style="cursor:pointer" onclick="previewImage('${value}')">` : '-';
@@ -1909,12 +1987,12 @@ function getPageColumns(collection) {
       { key: 'adminEmail', label: '관리자', type: 'default' }
     ],
     pvpPatch: [
-      { key: 'id', label: '캐릭터 ID', type: 'default' },
       { key: 'patchDate', label: '패치 날짜', type: 'date' },
+      { key: 'charId', label: '캐릭터 ID', type: 'default' },
       { key: 'name', label: '캐릭터 이름', type: 'default' },
       { key: 'type', label: '타입', type: 'pvpType' },
-      { key: 'published', label: '노출 상태', type: 'toggle' },
-      { key: 'adminEmail', label: '관리자', type: 'default' }
+      { key: 'visible', label: '노출 상태', type: 'toggle' },
+      { key: 'updatedBy', label: '관리자', type: 'default' }
     ],
     patchNotes: [
       { key: 'id', label: 'ID', type: 'default' },
@@ -1972,7 +2050,7 @@ function getPageFilterConfig(collection) {
     },
     pvpPatch: {
       filters: [
-        { key: 'type', label: '타입', options: ['버프', '너프', '기능수정', '신규', 'Up Comming'] }
+        { key: 'type', label: '타입', options: ['버프', '너프', '기능 수정', '신규', 'Up Comming'] }
       ]
     }
   };
