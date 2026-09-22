@@ -608,7 +608,12 @@ function applyFilters(collection) {
       const filterEl = $(`#filter_${collection}_${f.key}`);
       if (filterEl && filterEl.value) {
         state.filters[f.key] = filterEl.value;
-        filtered = filtered.filter(item => item[f.key] === filterEl.value);
+        filtered = filtered.filter(item => {
+          const itemValue = collection === 'pvpPatch' && f.key === 'type'
+            ? normalizePvpType(item[f.key])
+            : item[f.key];
+          return itemValue === filterEl.value;
+        });
       } else {
         delete state.filters[f.key];
       }
@@ -621,6 +626,16 @@ function applyFilters(collection) {
   const columns = getPageColumns(collection);
   renderTable(collection, columns);
   renderPagination(collection);
+}
+
+function normalizePvpType(value) {
+  const labels = {
+    nerf: '너프',
+    조정: '기능수정',
+    upcoming: 'Up Comming',
+    'up coming': 'Up Comming'
+  };
+  return labels[value] || value;
 }
 
 function resetFilters(collection) {
@@ -723,11 +738,17 @@ function renderCellContent(col, item, collection) {
       const checked = value ? 'checked' : '';
       return `<label class="toggle-switch"><input type="checkbox" ${checked} onchange="toggleField('${collection}','${item.id}','${col.key}',this.checked)"><span class="toggle-slider"></span></label>`;
     case 'date':
+      if (col.key === 'patchDate' && !value) {
+        return formatDate(item.date || item.createdAt);
+      }
       return formatDate(value);
     case 'datetime':
       return formatDateTime(value);
     case 'truncate':
       return `<span class="text-ellipsis" style="max-width:200px;display:inline-block" title="${value || ''}">${value || '-'}</span>`;
+    case 'pvpType': {
+      return normalizePvpType(value) || '-';
+    }
     case 'preview':
       return value ? `<img src="${value}" class="table-img" style="cursor:pointer" onclick="previewImage('${value}')">` : '-';
     default:
@@ -1014,6 +1035,16 @@ let currentImageUrl = null;
 let currentImageUploadPromise = null;
 let currentImageUploadError = null;
 const IMAGE_EDITOR_COLLECTIONS = new Set(['banners', 'characters', 'supportCharacters']);
+const SQUARE_IMAGE_EDITOR_COLLECTIONS = new Set(['characters', 'supportCharacters']);
+
+function getImageEditorOptions(collection) {
+  if (!SQUARE_IMAGE_EDITOR_COLLECTIONS.has(collection)) return {};
+  return {
+    aspectRatio: 1,
+    outputWidth: 500,
+    outputHeight: 500
+  };
+}
 
 function setupImageUpload(collection, existingUrl = null) {
   const uploadArea = $(`#imageUpload_${collection}`);
@@ -1090,7 +1121,7 @@ function openImageEditorForUpload(collection) {
     };
     reader.readAsDataURL(file);
     beginImageUpload(collection, file);
-  });
+  }, getImageEditorOptions(collection));
 }
 
 function beginImageUpload(collection, file) {
@@ -1860,10 +1891,10 @@ function getPageColumns(collection) {
       { key: 'adminEmail', label: '관리자', type: 'default' }
     ],
     pvpPatch: [
-      { key: 'id', label: 'ID', type: 'default' },
-      { key: 'imageUrl', label: '이미지', type: 'image' },
-      { key: 'name', label: '이름', type: 'default' },
-      { key: 'type', label: '타입', type: 'default' },
+      { key: 'id', label: '캐릭터 ID', type: 'default' },
+      { key: 'patchDate', label: '패치 날짜', type: 'date' },
+      { key: 'name', label: '캐릭터 이름', type: 'default' },
+      { key: 'type', label: '타입', type: 'pvpType' },
       { key: 'published', label: '노출 상태', type: 'toggle' },
       { key: 'adminEmail', label: '관리자', type: 'default' }
     ],
@@ -1923,7 +1954,7 @@ function getPageFilterConfig(collection) {
     },
     pvpPatch: {
       filters: [
-        { key: 'type', label: '타입', options: ['버프', 'nerf', '신규', '조정'] }
+        { key: 'type', label: '타입', options: ['버프', '너프', '기능수정', '신규', 'Up Comming'] }
       ]
     }
   };
@@ -1985,17 +2016,19 @@ function getAddFormConfig(collection) {
     },
     pvpPatch: {
       title: 'PvP 패치 추가',
-      hasImage: true,
+      hasImage: false,
       formHtml: `
-        <div class="form-group"><label>이름</label><input type="text" class="form-control" id="add_name" placeholder="패치 이름"></div>
-        <div class="form-group"><label>이미지</label><div class="image-upload" id="imageUpload_pvpPatch"><i class="fas fa-cloud-upload-alt"></i><p>클릭하여 이미지 업로드</p></div></div>
-        <div class="form-group"><label>타입</label><select class="form-control" id="add_type"><option value="버프">버프</option><option value="nerf"> nerf</option><option value="신규">신규</option><option value="조정">조정</option></select></div>
+        <div class="form-group"><label>캐릭터 이름</label><input type="text" class="form-control" id="add_name" placeholder="캐릭터 이름"></div>
+        <div class="form-group"><label>패치 날짜</label><input type="date" class="form-control" id="add_patchDate"></div>
+        <div class="form-group"><label>타입</label><select class="form-control" id="add_type"><option value="버프">버프</option><option value="너프">너프</option><option value="기능수정">기능수정</option><option value="신규">신규</option><option value="Up Comming">Up Comming</option></select></div>
         <div class="form-check"><input type="checkbox" id="add_published" checked><label>노출</label></div>
       `,
       getData: () => {
         const name = $('#add_name').value;
         if (!name) { showToast('이름을 입력하세요.', 'warning'); return null; }
-        return { name, type: $('#add_type').value, published: $('#add_published').checked, imageFile: currentImageFile };
+        const patchDate = $('#add_patchDate').value;
+        if (!patchDate) { showToast('패치 날짜를 선택하세요.', 'warning'); return null; }
+        return { name, patchDate, type: $('#add_type').value, published: $('#add_published').checked, imageFile: currentImageFile };
       }
     },
     patchNotes: {
@@ -2116,17 +2149,19 @@ function getEditFormConfig(collection, item) {
     },
     pvpPatch: {
       title: 'PvP 패치 수정',
-      hasImage: true,
+      hasImage: false,
       formHtml: `
-        <div class="form-group"><label>이름</label><input type="text" class="form-control" id="edit_name" value="${item.name || ''}"></div>
-        <div class="form-group"><label>이미지</label><div class="image-upload" id="imageUpload_pvpPatch">${item.imageUrl ? `<img src="${item.imageUrl}" class="image-preview">` : '<i class="fas fa-cloud-upload-alt"></i><p>클릭하여 이미지 업로드</p>'}</div></div>
-        <div class="form-group"><label>타입</label><select class="form-control" id="edit_type"><option value="버프" ${item.type==='버프'?'selected':''}>버프</option><option value="nerf" ${item.type==='nerf'?'selected':''}> nerf</option><option value="신규" ${item.type==='신규'?'selected':''}>신규</option><option value="조정" ${item.type==='조정'?'selected':''}>조정</option></select></div>
+        <div class="form-group"><label>캐릭터 이름</label><input type="text" class="form-control" id="edit_name" value="${item.name || ''}"></div>
+        <div class="form-group"><label>패치 날짜</label><input type="date" class="form-control" id="edit_patchDate" value="${item.patchDate || item.date || ''}"></div>
+        <div class="form-group"><label>타입</label><select class="form-control" id="edit_type"><option value="버프" ${item.type==='버프'?'selected':''}>버프</option><option value="너프" ${item.type==='너프' || item.type==='nerf'?'selected':''}>너프</option><option value="기능수정" ${item.type==='기능수정' || item.type==='조정'?'selected':''}>기능수정</option><option value="신규" ${item.type==='신규'?'selected':''}>신규</option><option value="Up Comming" ${item.type==='Up Comming' || item.type==='upcoming' || item.type==='up coming'?'selected':''}>Up Comming</option></select></div>
         <div class="form-check"><input type="checkbox" id="edit_published" ${item.published ? 'checked' : ''}><label>노출</label></div>
       `,
       getData: () => {
         const name = $('#edit_name').value;
         if (!name) { showToast('이름을 입력하세요.', 'warning'); return null; }
-        return { name, type: $('#edit_type').value, published: $('#edit_published').checked, imageFile: currentImageFile };
+        const patchDate = $('#edit_patchDate').value;
+        if (!patchDate) { showToast('패치 날짜를 선택하세요.', 'warning'); return null; }
+        return { name, patchDate, type: $('#edit_type').value, published: $('#edit_published').checked, imageFile: currentImageFile };
       }
     },
     patchNotes: {

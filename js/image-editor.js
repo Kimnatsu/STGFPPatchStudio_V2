@@ -14,6 +14,9 @@
     flipHorizontal: false,
     flipVertical: false,
     crop: null,
+    aspectRatio: null,
+    outputWidth: null,
+    outputHeight: null,
     dragging: false,
     dragStart: null,
     onSave: null
@@ -66,20 +69,43 @@
     context.drawImage(output, 0, 0, state.canvas.width, state.canvas.height);
 
     if (resetCrop || !state.crop) {
-      state.crop = {
-        x: 0,
-        y: 0,
-        width: state.canvas.width,
-        height: state.canvas.height
-      };
+      resetCropSelection();
     }
     updateCropBox();
+  }
+
+  function resetCropSelection() {
+    if (state.aspectRatio) {
+      const size = Math.min(state.canvas.width, state.canvas.height);
+      state.crop = {
+        x: (state.canvas.width - size) / 2,
+        y: (state.canvas.height - size) / 2,
+        width: size,
+        height: size
+      };
+      return;
+    }
+
+    state.crop = {
+      x: 0,
+      y: 0,
+      width: state.canvas.width,
+      height: state.canvas.height
+    };
   }
 
   function clampCrop(crop) {
     const width = state.canvas.width;
     const height = state.canvas.height;
     const minSize = Math.min(32, width, height);
+    if (state.aspectRatio) {
+      const maxWidth = Math.min(width, height * state.aspectRatio);
+      const maxHeight = Math.min(height, width / state.aspectRatio);
+      const cropWidth = Math.max(minSize, Math.min(crop.width, maxWidth));
+      const cropHeight = cropWidth / state.aspectRatio;
+      crop.width = cropWidth;
+      crop.height = cropHeight;
+    }
     crop.width = Math.max(minSize, Math.min(crop.width, width));
     crop.height = Math.max(minSize, Math.min(crop.height, height));
     crop.x = Math.max(0, Math.min(crop.x, width - crop.width));
@@ -125,6 +151,25 @@
     if (!state.dragging) return;
     const point = pointFromEvent(event);
     const start = state.dragStart;
+    if (state.aspectRatio) {
+      const directionX = point.x < start.x ? -1 : 1;
+      const directionY = point.y < start.y ? -1 : 1;
+      const requestedSize = Math.max(Math.abs(point.x - start.x), Math.abs(point.y - start.y));
+      const maxSize = Math.min(
+        directionX > 0 ? state.canvas.width - start.x : start.x,
+        directionY > 0 ? state.canvas.height - start.y : start.y
+      );
+      const size = Math.min(requestedSize, maxSize);
+      state.crop = {
+        x: directionX > 0 ? start.x : start.x - size,
+        y: directionY > 0 ? start.y : start.y - size,
+        width: size,
+        height: size
+      };
+      updateCropBox();
+      return;
+    }
+
     state.crop = {
       x: Math.min(start.x, point.x),
       y: Math.min(start.y, point.y),
@@ -139,23 +184,13 @@
     state.dragging = false;
     state.canvas.releasePointerCapture?.(event.pointerId);
     if (state.crop.width < 32 || state.crop.height < 32) {
-      state.crop = {
-        x: 0,
-        y: 0,
-        width: state.canvas.width,
-        height: state.canvas.height
-      };
+      resetCropSelection();
       updateCropBox();
     }
   }
 
   function resetCrop() {
-    state.crop = {
-      x: 0,
-      y: 0,
-      width: state.canvas.width,
-      height: state.canvas.height
-    };
+    resetCropSelection();
     updateCropBox();
   }
 
@@ -169,8 +204,8 @@
       const sourceWidth = Math.max(1, Math.round(state.crop.width * scaleX));
       const sourceHeight = Math.max(1, Math.round(state.crop.height * scaleY));
       const result = document.createElement('canvas');
-      result.width = sourceWidth;
-      result.height = sourceHeight;
+      result.width = state.outputWidth || sourceWidth;
+      result.height = state.outputHeight || sourceHeight;
       result.getContext('2d').drawImage(
         output,
         sourceX,
@@ -179,8 +214,8 @@
         sourceHeight,
         0,
         0,
-        sourceWidth,
-        sourceHeight
+        result.width,
+        result.height
       );
 
       result.toBlob(blob => {
@@ -212,18 +247,33 @@
       flipHorizontal: false,
       flipVertical: false,
       crop: null,
+      aspectRatio: null,
+      outputWidth: null,
+      outputHeight: null,
       dragging: false,
       dragStart: null,
       onSave: null
     });
   }
 
-  function open(source, onSave) {
+  function open(source, onSave, options = {}) {
     close();
     state.onSave = onSave;
     state.rotation = 0;
     state.flipHorizontal = false;
     state.flipVertical = false;
+    state.aspectRatio = Number.isFinite(options.aspectRatio) && options.aspectRatio > 0
+      ? options.aspectRatio
+      : null;
+    state.outputWidth = Number.isFinite(options.outputWidth) && options.outputWidth > 0
+      ? Math.round(options.outputWidth)
+      : null;
+    state.outputHeight = Number.isFinite(options.outputHeight) && options.outputHeight > 0
+      ? Math.round(options.outputHeight)
+      : null;
+    const imageEditorLabel = state.outputWidth && state.outputHeight
+      ? `${state.outputWidth}×${state.outputHeight}`
+      : '1:1 이미지';
 
     const overlay = document.createElement('div');
     overlay.id = 'imageEditorOverlay';
@@ -231,7 +281,7 @@
     overlay.innerHTML = `
       <section class="image-editor-modal" role="dialog" aria-modal="true" aria-labelledby="imageEditorTitle">
         <header class="image-editor-header">
-          <h3 id="imageEditorTitle">이미지 편집 <span>1:1 이미지</span></h3>
+          <h3 id="imageEditorTitle">이미지 편집 <span>${imageEditorLabel}</span></h3>
           <div class="image-editor-header-actions">
             <button type="button" class="image-editor-guide" id="imageEditorGuide">
               <i class="far fa-question-circle"></i>

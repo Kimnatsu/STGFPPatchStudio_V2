@@ -4,15 +4,15 @@
     title: 'PvP 패치 관리',
     collection: 'pvpPatch',
     columns: [
-      { key: 'id', label: 'ID', type: 'default' },
-      { key: 'imageUrl', label: '이미지', type: 'image' },
-      { key: 'name', label: '이름', type: 'default' },
-      { key: 'type', label: '타입', type: 'default' },
+      { key: 'id', label: '캐릭터 ID', type: 'default' },
+      { key: 'patchDate', label: '패치 날짜', type: 'date' },
+      { key: 'name', label: '캐릭터 이름', type: 'default' },
+      { key: 'type', label: '타입', type: 'pvpType' },
       { key: 'published', label: '노출 상태', type: 'toggle' },
       { key: 'adminEmail', label: '관리자', type: 'default' }
     ],
     filters: [
-      { key: 'type', label: '타입', options: ['버프', 'nerf', '신규', '조정'] }
+      { key: 'type', label: '타입', options: ['버프', '너프', '기능수정', '신규', 'Up Comming'] }
     ],
     render(container) {
       createListPage(container, {
