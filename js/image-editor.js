@@ -300,14 +300,33 @@
       window.showToast?.('이미지를 불러오지 못했습니다. 파일을 다시 선택해 주세요.', 'error');
       close();
     };
+    const setImageSource = url => {
+      state.sourceUrl = url;
+      image.src = url;
+    };
+
     if (source instanceof Blob) {
       state.objectUrl = URL.createObjectURL(source);
-      state.sourceUrl = state.objectUrl;
+      setImageSource(state.objectUrl);
     } else {
-      state.sourceUrl = source;
-      image.crossOrigin = 'anonymous';
+      // OPFP와 동일하게 기존 Cloudinary 이미지를 먼저 Blob으로 읽습니다.
+      // 이렇게 하면 편집 결과를 canvas.toBlob()으로 만들 때 tainted canvas가
+      // 되는 문제를 피할 수 있습니다.
+      fetch(source)
+        .then(response => {
+          if (!response.ok) throw new Error('이미지 fetch 실패');
+          return response.blob();
+        })
+        .then(blob => {
+          state.objectUrl = URL.createObjectURL(blob);
+          setImageSource(state.objectUrl);
+        })
+        .catch(() => {
+          // CORS 설정이 없는 외부 URL에 대한 최후의 표시용 fallback.
+          image.crossOrigin = 'anonymous';
+          setImageSource(source);
+        });
     }
-    image.src = state.sourceUrl;
   }
 
   window.FPPImageEditor = { open, close };

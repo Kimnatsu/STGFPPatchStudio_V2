@@ -24,7 +24,6 @@
   window.FPPFirebase = Object.freeze({
     db: firebase.firestore(),
     auth: firebase.auth(),
-    storage: firebase.storage(),
     googleProvider: new firebase.auth.GoogleAuthProvider(),
     FieldValue: firebase.firestore.FieldValue,
     Persistence: firebase.auth.Auth.Persistence

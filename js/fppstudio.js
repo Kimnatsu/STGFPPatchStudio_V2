@@ -1,8 +1,8 @@
 // ===== FPPStudio Main JavaScript =====
 
 // Firebase services are initialized in js/firebase.js.
-const { db, auth, storage, googleProvider, FieldValue, Persistence } = window.FPPFirebase;
-const { ADMIN_EMAILS, SUPER_ADMIN_EMAIL } = window.FPPAdminConfig;
+const { db, auth, googleProvider, FieldValue, Persistence } = window.FPPFirebase;
+const { ADMIN_EMAILS, SUPER_ADMIN_EMAIL, CLOUDINARY_CONFIG } = window.FPPAdminConfig;
 const ADMIN_MODULES = window.FPPAdminModules;
 
 // ===== App State =====
@@ -849,6 +849,9 @@ function toggleSelect(collection, id) {
 async function handleAddItem(collection) {
   currentImageFile = null;
   currentImagePreviewUrl = null;
+  currentImageUrl = null;
+  currentImageUploadPromise = null;
+  currentImageUploadError = null;
   const config = getAddFormConfig(collection);
   if (!config) return;
   
@@ -872,16 +875,13 @@ async function submitAddItem(collection) {
   const { imageFile, ...data } = formData;
   
   try {
+    await currentImageUploadPromise;
+    if (currentImageUploadError) throw currentImageUploadError;
     data.createdAt = FieldValue.serverTimestamp();
     data.adminEmail = AppState.currentUser.email;
+    if (currentImageUrl) data.imageUrl = currentImageUrl;
     
     const docRef = await db.collection(collection).add(data);
-    
-    // Upload image if exists
-    if (imageFile) {
-      const imageUrl = await uploadImage(imageFile, collection, docRef.id);
-      await db.collection(collection).doc(docRef.id).update({ imageUrl });
-    }
     
     closeModal();
     showToast('추가되었습니다.', 'success');
@@ -893,6 +893,8 @@ async function submitAddItem(collection) {
     showToast('추가 실패: ' + err.message, 'error');
   } finally {
     currentImageFile = null;
+    currentImageUploadPromise = null;
+    currentImageUploadError = null;
   }
 }
 
@@ -905,6 +907,9 @@ async function editItem(collection, id) {
   
   currentImageFile = null;
   currentImagePreviewUrl = null;
+  currentImageUrl = null;
+  currentImageUploadPromise = null;
+  currentImageUploadError = null;
   const config = getEditFormConfig(collection, item);
   if (!config) return;
   
@@ -933,10 +938,10 @@ async function submitEditItem(collection, id) {
   const { imageFile, ...data } = formData;
   
   try {
-    // Upload new image if exists
-    if (imageFile) {
-      const imageUrl = await uploadImage(imageFile, collection, id);
-      data.imageUrl = imageUrl;
+    await currentImageUploadPromise;
+    if (currentImageUploadError) throw currentImageUploadError;
+    if (currentImageUrl && currentImageUrl !== item.imageUrl) {
+      data.imageUrl = currentImageUrl;
     }
     
     data.updatedAt = FieldValue.serverTimestamp();
@@ -952,6 +957,8 @@ async function submitEditItem(collection, id) {
     showToast('수정 실패: ' + err.message, 'error');
   } finally {
     currentImageFile = null;
+    currentImageUploadPromise = null;
+    currentImageUploadError = null;
   }
 }
 
@@ -1003,6 +1010,9 @@ async function toggleBoardVisibility(id) {
 // ===== Image Upload =====
 let currentImageFile = null;
 let currentImagePreviewUrl = null;
+let currentImageUrl = null;
+let currentImageUploadPromise = null;
+let currentImageUploadError = null;
 const IMAGE_EDITOR_COLLECTIONS = new Set(['banners', 'characters', 'supportCharacters']);
 
 function setupImageUpload(collection, existingUrl = null) {
@@ -1010,6 +1020,7 @@ function setupImageUpload(collection, existingUrl = null) {
   if (!uploadArea) return;
 
   currentImagePreviewUrl = existingUrl || currentImagePreviewUrl || null;
+  currentImageUrl = existingUrl || currentImageUrl || null;
   if (currentImagePreviewUrl) renderImageUploadPreview(collection, currentImagePreviewUrl);
 
   uploadArea.addEventListener('click', () => {
@@ -1019,8 +1030,8 @@ function setupImageUpload(collection, existingUrl = null) {
     input.onchange = (e) => {
       const file = e.target.files[0];
       if (file) {
-        if (!file.type.startsWith('image/')) {
-          showToast('이미지 파일만 업로드할 수 있습니다.', 'warning');
+        if (!CLOUDINARY_CONFIG.allowedTypes.includes(file.type)) {
+          showToast('지원하지 않는 파일 형식입니다. (허용: JPG, PNG, WEBP, GIF)', 'warning');
           return;
         }
         if (file.size > 10 * 1024 * 1024) {
@@ -1034,6 +1045,8 @@ function setupImageUpload(collection, existingUrl = null) {
           renderImageUploadPreview(collection, currentImagePreviewUrl);
           if (IMAGE_EDITOR_COLLECTIONS.has(collection)) {
             openImageEditorForUpload(collection);
+          } else {
+            beginImageUpload(collection, file);
           }
         };
         reader.readAsDataURL(file);
@@ -1076,15 +1089,61 @@ function openImageEditorForUpload(collection) {
       renderImageUploadPreview(collection, currentImagePreviewUrl);
     };
     reader.readAsDataURL(file);
-    showToast('이미지를 편집했습니다. 저장 버튼을 눌러 반영하세요.', 'success');
+    beginImageUpload(collection, file);
   });
 }
 
-async function uploadImage(file, collection, docId) {
-  const path = `${collection}/${docId}/${file.name}`;
-  const ref = storage.ref(path);
-  await ref.put(file);
-  return await ref.getDownloadURL();
+function beginImageUpload(collection, file) {
+  currentImageUploadError = null;
+  currentImageUploadPromise = uploadImage(file, collection)
+    .then(url => {
+      currentImageUrl = url;
+      currentImageFile = null;
+      currentImagePreviewUrl = url;
+      renderImageUploadPreview(collection, url);
+      showToast('이미지가 업로드되었습니다.', 'success');
+      return url;
+    })
+    .catch(error => {
+      currentImageUploadError = error;
+      showToast('이미지 업로드 실패: ' + error.message, 'error');
+      return null;
+    });
+}
+
+async function uploadImage(file, collection) {
+  if (!CLOUDINARY_CONFIG.allowedTypes.includes(file.type)) {
+    throw new Error('지원하지 않는 파일 형식입니다. (허용: JPG, PNG, WEBP, GIF)');
+  }
+
+  if (file.size > CLOUDINARY_CONFIG.maxSizeBytes) {
+    throw new Error(`파일 크기가 너무 큽니다. (최대 ${CLOUDINARY_CONFIG.maxSizeBytes / (1024 * 1024)}MB)`);
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
+  formData.append('folder', `${CLOUDINARY_CONFIG.baseFolder}/${collection}`);
+
+  const endpoint = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`;
+  let response;
+  try {
+    response = await fetch(endpoint, { method: 'POST', body: formData });
+  } catch (networkError) {
+    throw new Error('네트워크 오류로 업로드에 실패했습니다. 인터넷 연결을 확인해주세요.');
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const message = errorData?.error?.message || '알 수 없는 오류';
+    throw new Error(`업로드 실패 (${response.status}): ${message}`);
+  }
+
+  const result = await response.json();
+  if (!result.secure_url) {
+    throw new Error('업로드는 완료됐지만 URL을 받지 못했습니다. 다시 시도해주세요.');
+  }
+  return result.secure_url;
 }
 
 function previewImage(url) {
