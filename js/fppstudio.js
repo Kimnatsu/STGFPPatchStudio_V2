@@ -2431,16 +2431,7 @@ function renderBoardsPage(container) {
     title: '게시판 관리',
     collection: 'boards',
     columns: getPageColumns('boards'),
-    filters: null,
-    filterLeftHtml: `
-      <select class="filter-select" id="filter_boards_category" onchange="applyFilters('boards')">
-        <option value="">전체</option>
-        <option value="자유">자유</option>
-        <option value="정보">정보</option>
-        <option value="질문">질문</option>
-        <option value="자랑">자랑</option>
-      </select>
-    `,
+    filters: getPageFilterConfig('boards')?.filters,
     hasAdd: true,
     hasSaveBar: true
   });
