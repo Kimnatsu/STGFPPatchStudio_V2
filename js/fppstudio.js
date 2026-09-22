@@ -2,16 +2,8 @@
 
 // Firebase services are initialized in js/firebase.js.
 const { db, auth, storage, googleProvider, FieldValue, Persistence } = window.FPPFirebase;
-
-// ===== Admin Configuration =====
-const ADMIN_EMAILS = [
-  'gichan1005kim@gmail.com',
-  'gimbaein7@gmail.com',
-  'kyg12555@gmail.com',
-  'skadlstj9081@gmail.com',
-  'brawnstars201596@gmail.com'
-];
-const SUPER_ADMIN_EMAIL = 'gichan1005kim@gmail.com';
+const { ADMIN_EMAILS, SUPER_ADMIN_EMAIL } = window.FPPAdminConfig;
+const ADMIN_MODULES = window.FPPAdminModules;
 
 // ===== App State =====
 const AppState = {
@@ -348,6 +340,12 @@ function renderPage(page) {
   const config = PAGE_CONFIG[page];
   if (!config) {
     content.innerHTML = '<div class="state-container"><i class="fas fa-exclamation-circle"></i><h3>페이지를 찾을 수 없습니다</h3></div>';
+    return;
+  }
+
+  const module = ADMIN_MODULES[page];
+  if (module?.render) {
+    module.render(content);
     return;
   }
   
@@ -1719,6 +1717,9 @@ function importData() {
 
 // ===== Page Configurations =====
 function getPageColumns(collection) {
+  if (ADMIN_MODULES[collection]?.columns) {
+    return ADMIN_MODULES[collection].columns;
+  }
   const configs = {
     banners: [
       { key: 'id', label: 'ID', type: 'default' },
@@ -1792,6 +1793,9 @@ function getPageColumns(collection) {
 }
 
 function getPageFilterConfig(collection) {
+  if (ADMIN_MODULES[collection]?.filters) {
+    return { filters: ADMIN_MODULES[collection].filters };
+  }
   const configs = {
     characters: {
       filters: [
