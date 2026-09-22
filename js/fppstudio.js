@@ -471,7 +471,7 @@ function createListPage(container, config) {
       <div class="filter-left">${filterLeftHtml}`;
     filters.forEach(f => {
       html += `<select class="filter-select" id="filter_${collection}_${f.key}" onchange="applyFilters('${collection}')">
-        <option value="">${f.label}</option>
+        <option value="">${f.allLabel || f.label}</option>
         ${f.options.map(o => `<option value="${o}">${o}</option>`).join('')}
       </select>`;
     });
@@ -2147,7 +2147,7 @@ function getPageFilterConfig(collection) {
     },
     boards: {
       filters: [
-        { key: 'category', label: '카테고리', options: ['자유', '정보', '질문', '자랑'] }
+        { key: 'category', label: '카테고리', allLabel: '전체', options: ['자유', '정보', '질문', '자랑'] }
       ]
     }
   };
@@ -2431,8 +2431,7 @@ function renderBoardsPage(container) {
     title: '게시판 관리',
     collection: 'boards',
     columns: getPageColumns('boards'),
-    filters: null,
-    filterButtons: getPageFilterConfig('boards')?.filters,
+    filters: getPageFilterConfig('boards')?.filters,
     hasAdd: true,
     hasSaveBar: true
   });
