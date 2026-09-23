@@ -628,8 +628,6 @@ async function hydrateCollectionData(collection, snapshot) {
   });
 
   if (collection === 'banners'
-    || collection === 'characters'
-    || collection === 'supportCharacters'
     || collection === 'patchNotes'
     || collection === 'notices') {
     return rows.map(item => ({
@@ -639,6 +637,17 @@ async function hydrateCollectionData(collection, snapshot) {
       ...(collection === 'patchNotes' || collection === 'notices'
         ? { author: item.author || (item.updatedBy || item.adminEmail ? '관리자' : '-') }
         : {})
+    }));
+  }
+
+  if (collection === 'characters' || collection === 'supportCharacters') {
+    return rows.map(item => ({
+      ...item,
+      grade: item.grade ?? item.tier ?? item.rank ?? '',
+      attribute: item.attribute ?? item.attr ?? item.element ?? '',
+      type: item.type ?? item.battleType ?? item.battle_type ?? item.battle ?? '',
+      visible: item.visible ?? item.published ?? true,
+      updatedBy: item.updatedBy || item.adminEmail || '-'
     }));
   }
 
@@ -729,21 +738,12 @@ function applyFilters(collection) {
   if (config && config.filters) {
     config.filters.forEach(f => {
       const filterEl = $(`#filter_${collection}_${f.key}`);
-      const filterValue = filterEl ? filterEl.value : (state.filters[f.key] || '');
-      if (filterValue) {
-        state.filters[f.key] = filterValue;
+      const selectedValue = filterEl ? filterEl.value : (state.filters[f.key] || '');
+      if (selectedValue) {
+        state.filters[f.key] = selectedValue;
         filtered = filtered.filter(item => {
-          const itemValue = collection === 'pvpPatch' && f.key === 'type'
-            ? (Array.isArray(item[f.key])
-              ? item[f.key].map(normalizePvpType)
-              : normalizePvpType(item[f.key]))
-            : item[f.key];
-          const filterValue = collection === 'pvpPatch' && f.key === 'type'
-            ? normalizePvpType(filterValue)
-            : filterValue;
-          return Array.isArray(itemValue)
-            ? itemValue.includes(filterValue)
-            : itemValue === filterValue;
+          const itemValue = getFilterItemValue(item, collection, f.key);
+          return filterValueMatches(itemValue, selectedValue, collection, f.key);
         });
       } else {
         delete state.filters[f.key];
@@ -759,6 +759,73 @@ function applyFilters(collection) {
   renderPagination(collection);
 }
 
+function getFilterItemValue(item, collection, key) {
+  if (collection === 'characters' || collection === 'supportCharacters') {
+    const aliases = {
+      grade: ['grade', 'tier', 'rank'],
+      attribute: ['attribute', 'attr', 'element'],
+      type: ['type', 'battleType', 'battle_type', 'battle']
+    };
+    const value = (aliases[key] || [key])
+      .map(alias => item[alias])
+      .find(value => value !== undefined && value !== null && value !== '');
+    return value ?? '';
+  }
+
+  if (collection === 'pvpPatch' && key === 'type') {
+    return item.type ?? item.patchType ?? item.kind ?? '';
+  }
+
+  return item[key];
+}
+
+function filterValueMatches(itemValue, selectedValue, collection, key) {
+  const values = Array.isArray(itemValue) ? itemValue : [itemValue];
+  return values.some(value => normalizeFilterValue(value, collection, key)
+    === normalizeFilterValue(selectedValue, collection, key));
+}
+
+function normalizeFilterValue(value, collection, key) {
+  const text = String(value ?? '').trim().toLowerCase();
+  if (collection === 'pvpPatch' && key === 'type') {
+    return normalizePvpType(text).trim().toLowerCase();
+  }
+
+  if ((collection === 'characters' || collection === 'supportCharacters')
+    && key === 'attribute') {
+    const attributes = {
+      force: '力',
+      힘: '力',
+      '力': '力',
+      ki: '技',
+      기: '技',
+      '技': '技',
+      sim: '心',
+      심: '心',
+      '心': '心'
+    };
+    return attributes[text] || text;
+  }
+
+  if ((collection === 'characters' || collection === 'supportCharacters')
+    && key === 'type') {
+    const types = {
+      fighter: '격투',
+      격투: '격투',
+      sword: '검술',
+      검사: '검술',
+      검술: '검술',
+      element: '원소',
+      원소: '원소',
+      special: '특수',
+      특수: '특수'
+    };
+    return types[text] || text;
+  }
+
+  return text;
+}
+
 function normalizePvpType(value) {
   const labels = {
     buff: '버프',
@@ -767,11 +834,14 @@ function normalizePvpType(value) {
     조정: '기능 수정',
     기능수정: '기능 수정',
     '기능 수정': '기능 수정',
+    new: '신규',
     신규: '신규',
     upcoming: 'Up Comming',
-    'up coming': 'Up Comming'
+    'up coming': 'Up Comming',
+    'up comming': 'Up Comming'
   };
-  return labels[String(value).toLowerCase()] || labels[value] || value;
+  const normalizedValue = String(value ?? '').trim().toLowerCase();
+  return labels[normalizedValue] || labels[value] || value;
 }
 
 function resetFilters(collection) {
