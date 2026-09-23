@@ -1,11 +1,13 @@
 // ===== Events and Boards Administration Modules =====
 (function registerEventsModules() {
   const listPage = (module, container) => {
+    const isBoard = module.collection === 'boards';
     createListPage(container, {
       title: module.title,
       collection: module.collection,
       columns: module.columns,
-      filters: getPageFilterConfig(module.collection)?.filters || null,
+      filters: isBoard ? null : getPageFilterConfig(module.collection)?.filters || null,
+      filterButtons: isBoard ? getPageFilterConfig(module.collection)?.filters || [] : [],
       hasAdd: true,
       hasSaveBar: true
     });

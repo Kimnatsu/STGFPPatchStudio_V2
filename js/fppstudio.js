@@ -839,8 +839,6 @@ function renderTable(collection, columns) {
   const start = (state.page - 1) * state.itemsPerPage;
   const end = start + state.itemsPerPage;
   const pageData = state.filteredData.slice(start, end);
-  const selectedPageItems = pageData.filter(item => state.selectedIds.has(item.id)).length;
-  const hasPartialSelection = selectedPageItems > 0 && selectedPageItems < pageData.length;
   
   let html = '<table><thead><tr>';
   const allPageItemsSelected = areAllPageItemsSelected(collection, pageData);
@@ -850,8 +848,9 @@ function renderTable(collection, columns) {
   
   pageData.forEach(item => {
     const checked = state.selectedIds.has(item.id) ? 'checked' : '';
+    const encodedId = encodeURIComponent(String(item.id));
     html += `<tr data-id="${item.id}">`;
-    html += `<td class="checkbox-cell"><input type="checkbox" aria-label="항목 개별 선택" ${checked} onchange="toggleSelect('${collection}','${item.id}')"></td>`;
+    html += `<td class="checkbox-cell"><input type="checkbox" aria-label="항목 개별 선택" data-select-collection="${collection}" data-select-id="${encodedId}" ${checked}></td>`;
     columns.forEach(col => {
       const cellClass = col.type === 'image' || col.type === 'preview' ? ' class="image-cell"' : '';
       html += `<td${cellClass}>${renderCellContent(col, item, collection)}</td>`;
@@ -862,11 +861,27 @@ function renderTable(collection, columns) {
   
   html += '</tbody></table>';
   wrapper.innerHTML = html;
+  bindTableSelection(wrapper, collection, pageData);
+}
 
+function bindTableSelection(wrapper, collection, pageData) {
+  if (!wrapper) return;
+
+  const state = AppState.pageStates[collection];
+  const selectedPageItems = pageData.filter(item => state?.selectedIds.has(item.id)).length;
   const selectAllCheckbox = wrapper.querySelector(`#selectAll_${collection}`);
   if (selectAllCheckbox) {
-    selectAllCheckbox.indeterminate = hasPartialSelection;
+    selectAllCheckbox.indeterminate = selectedPageItems > 0 && selectedPageItems < pageData.length;
   }
+
+  wrapper.querySelectorAll('input[data-select-id]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      toggleSelect(
+        checkbox.dataset.selectCollection,
+        decodeURIComponent(checkbox.dataset.selectId)
+      );
+    });
+  });
 }
 
 function renderCellContent(col, item, collection) {
@@ -1513,7 +1528,7 @@ function renderMembersTable() {
   
   let html = '<table><thead><tr>';
   const allPageItemsSelected = areAllPageItemsSelected('members', pageData);
-  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_members" ' + (allPageItemsSelected ? 'checked' : '') + ' onchange="toggleSelectAll(\'members\')"></th>';
+  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_members" aria-label="현재 페이지 전체 선택" ' + (allPageItemsSelected ? 'checked' : '') + ' onchange="toggleSelectAll(\'members\')"></th>';
   html += '<th>멤버</th><th>UID</th><th>닉네임 변경 이력</th><th>메모</th><th>작업</th>';
   html += '</tr></thead><tbody>';
   
@@ -1522,7 +1537,7 @@ function renderMembersTable() {
     const nickname = item.nickname || item.displayName || '-';
     const email = item.email || '-';
     html += `<tr>
-      <td class="checkbox-cell"><input type="checkbox" ${checked} onchange="toggleSelect('members','${item.id}')"></td>
+       <td class="checkbox-cell"><input type="checkbox" aria-label="항목 개별 선택" data-select-collection="members" data-select-id="${encodeURIComponent(String(item.id))}" ${checked}></td>
       <td><div style="font-weight:500">${nickname}</div><div style="font-size:11px;color:var(--text-secondary)">${email}</div></td>
       <td style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis">${item.id}</td>
       <td>${item.nicknameHistory ? item.nicknameHistory.length + '회' : '0회'}</td>
@@ -1533,6 +1548,7 @@ function renderMembersTable() {
   
   html += '</tbody></table>';
   wrapper.innerHTML = html;
+  bindTableSelection(wrapper, 'members', pageData);
   renderMembersPagination();
 }
 
@@ -1710,7 +1726,7 @@ function renderPermissionsTable() {
   
   let html = '<table><thead><tr>';
   const allPageItemsSelected = areAllPageItemsSelected('permissions', pageData);
-  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_permissions" ' + (allPageItemsSelected ? 'checked' : '') + ' onchange="toggleSelectAll(\'permissions\')"></th>';
+  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_permissions" aria-label="현재 페이지 전체 선택" ' + (allPageItemsSelected ? 'checked' : '') + ' onchange="toggleSelectAll(\'permissions\')"></th>';
   html += '<th>멤버</th><th>이메일</th><th>멤버 관리 권한</th><th>스튜디오 권한</th><th>작업</th>';
   html += '</tr></thead><tbody>';
   
@@ -1718,7 +1734,7 @@ function renderPermissionsTable() {
     const checked = state.selectedIds.has(item.id) ? 'checked' : '';
     const isSuper = item.isSuperAdmin || item.email === SUPER_ADMIN_EMAIL;
     html += `<tr>
-      <td class="checkbox-cell"><input type="checkbox" ${checked} onchange="toggleSelect('permissions','${item.id}')"></td>
+      <td class="checkbox-cell"><input type="checkbox" aria-label="항목 개별 선택" data-select-collection="permissions" data-select-id="${encodeURIComponent(String(item.id))}" ${checked}></td>
       <td>${isSuper ? '<span class="badge badge-warning">총괄관리자</span>' : '<span class="badge badge-info">관리자</span>'}</td>
       <td style="font-size:12px">${item.email}</td>
       <td>${isSuper ? '<span class="badge badge-success">전체</span>' : `<select class="perm-select" onchange="updateMemberPerm('${item.id}',this.value)"><option value="true" ${item.canManageContent !== false ? 'selected' : ''}>허용</option><option value="false" ${item.canManageContent === false ? 'selected' : ''}>거부</option></select>`}</td>
@@ -1729,6 +1745,7 @@ function renderPermissionsTable() {
   
   html += '</tbody></table>';
   wrapper.innerHTML = html;
+  bindTableSelection(wrapper, 'permissions', pageData);
   renderPermissionsPagination();
 }
 
@@ -1871,14 +1888,14 @@ function renderSupportTable() {
   
   let html = '<table><thead><tr>';
   const allPageItemsSelected = areAllPageItemsSelected('support', pageData);
-  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_support" ' + (allPageItemsSelected ? 'checked' : '') + ' onchange="toggleSelectAll(\'support\')"></th>';
+  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_support" aria-label="현재 페이지 전체 선택" ' + (allPageItemsSelected ? 'checked' : '') + ' onchange="toggleSelectAll(\'support\')"></th>';
   html += '<th>ID</th><th>날짜</th><th>제목</th><th>글쓴이</th><th>문의내용 확인</th><th>문의내용 답변</th><th>관리자</th><th>작업</th>';
   html += '</tr></thead><tbody>';
   
   pageData.forEach(item => {
     const status = item.answered ? '<span class="badge badge-success">답변완료</span>' : '<span class="badge badge-warning">대기중</span>';
     html += `<tr>
-       <td class="checkbox-cell"><input type="checkbox" ${state.selectedIds.has(item.id) ? 'checked' : ''} onchange="toggleSelect('support','${item.id}')"></td>
+       <td class="checkbox-cell"><input type="checkbox" aria-label="항목 개별 선택" data-select-collection="support" data-select-id="${encodeURIComponent(String(item.id))}" ${state.selectedIds.has(item.id) ? 'checked' : ''}></td>
       <td style="font-size:11px">${item.id.substring(0,8)}...</td>
       <td>${formatDate(item.createdAt)}</td>
       <td>${item.title || '-'}</td>
@@ -1892,6 +1909,7 @@ function renderSupportTable() {
   
   html += '</tbody></table>';
   wrapper.innerHTML = html;
+  bindTableSelection(wrapper, 'support', pageData);
   renderSupportPagination();
 }
 
