@@ -788,9 +788,15 @@ body.has-save-bar .main-content {
 }
 
 .table-wrapper td.actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  display: table-cell;
+  width: 1%;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.table-wrapper td.actions .btn-icon + .btn-icon {
+  margin-left: 4px;
 }
 
 .table-wrapper .checkbox-cell {
