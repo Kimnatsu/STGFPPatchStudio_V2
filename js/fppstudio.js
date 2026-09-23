@@ -851,7 +851,8 @@ function renderTable(collection, columns) {
     html += `<tr data-id="${item.id}">`;
     html += `<td class="checkbox-cell"><input type="checkbox" ${checked} onchange="toggleSelect('${collection}','${item.id}')"></td>`;
     columns.forEach(col => {
-      html += `<td>${renderCellContent(col, item, collection)}</td>`;
+      const cellClass = col.type === 'image' || col.type === 'preview' ? ' class="image-cell"' : '';
+      html += `<td${cellClass}>${renderCellContent(col, item, collection)}</td>`;
     });
     html += `<td class="actions">${renderActions(item, collection)}</td>`;
     html += '</tr>';
@@ -870,7 +871,7 @@ function renderCellContent(col, item, collection) {
   
   switch(col.type) {
     case 'image':
-      return value ? `<img src="${value}" class="table-img" alt="">` : '<span style="color:var(--text-secondary)">-</span>';
+      return value ? `<img src="${value}" class="${getTableImageClass(collection)}" alt="">` : '<span style="color:var(--text-secondary)">-</span>';
     case 'status':
       if (value === true || value === 'active' || value === 'published') {
         return '<span class="badge badge-success">활성</span>';
@@ -906,10 +907,18 @@ function renderCellContent(col, item, collection) {
       }).join('');
     }
     case 'preview':
-      return value ? `<img src="${value}" class="table-img" style="cursor:pointer" onclick="previewImage('${value}')">` : '-';
+      return value ? `<img src="${value}" class="${getTableImageClass(collection)}" style="cursor:pointer" onclick="previewImage('${value}')">` : '-';
     default:
       return value || '-';
   }
+}
+
+function getTableImageClass(collection) {
+  if (collection === 'banners') return 'table-img table-img-banner';
+  if (collection === 'characters' || collection === 'supportCharacters') {
+    return 'table-img table-img-character';
+  }
+  return 'table-img';
 }
 
 function renderActions(item, collection) {
