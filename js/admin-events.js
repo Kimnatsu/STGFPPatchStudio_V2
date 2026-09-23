@@ -5,7 +5,7 @@
       title: module.title,
       collection: module.collection,
       columns: module.columns,
-      filters: null,
+      filters: getPageFilterConfig(module.collection)?.filters || null,
       hasAdd: true,
       hasSaveBar: true
     });
