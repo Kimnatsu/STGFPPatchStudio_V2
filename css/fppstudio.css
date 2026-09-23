@@ -799,6 +799,23 @@ body.has-save-bar .main-content {
   background: rgba(99,102,241,0.02);
 }
 
+.table-wrapper tbody tr[data-select-row-id] {
+  cursor: pointer;
+}
+
+.table-wrapper tbody tr[data-select-row-id]:focus-visible td {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.table-wrapper tbody tr.is-selected td {
+  background: rgba(99,102,241,0.09);
+}
+
+.table-wrapper tbody tr.is-selected:hover td {
+  background: rgba(99,102,241,0.14);
+}
+
 .table-wrapper td.actions {
   display: table-cell;
   width: 1%;

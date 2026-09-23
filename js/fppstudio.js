@@ -917,9 +917,11 @@ function renderTable(collection, columns) {
   html += '<th>작업</th></tr></thead><tbody>';
   
   pageData.forEach(item => {
-    const checked = state.selectedIds.has(item.id) ? 'checked' : '';
+    const selectionKey = getSelectionKey(item.id);
+    const selected = state.selectedIds.has(selectionKey);
+    const checked = selected ? 'checked' : '';
     const encodedId = encodeURIComponent(String(item.id));
-    html += `<tr data-id="${item.id}">`;
+    html += `<tr data-id="${item.id}" data-select-row-id="${encodedId}" class="${selected ? 'is-selected' : ''}" aria-selected="${selected}">`;
     html += `<td class="checkbox-cell"><input type="checkbox" aria-label="항목 개별 선택" data-select-collection="${collection}" data-select-id="${encodedId}" ${checked}></td>`;
     columns.forEach(col => {
       const cellClass = col.type === 'image' || col.type === 'preview' ? ' class="image-cell"' : '';
@@ -938,7 +940,9 @@ function bindTableSelection(wrapper, collection, pageData) {
   if (!wrapper) return;
 
   const state = AppState.pageStates[collection];
-  const selectedPageItems = pageData.filter(item => state?.selectedIds.has(item.id)).length;
+  const selectedPageItems = pageData.filter(item => (
+    state?.selectedIds.has(getSelectionKey(item.id))
+  )).length;
   const selectAllCheckbox = wrapper.querySelector(`#selectAll_${collection}`);
   if (selectAllCheckbox) {
     selectAllCheckbox.indeterminate = selectedPageItems > 0 && selectedPageItems < pageData.length;
@@ -950,6 +954,29 @@ function bindTableSelection(wrapper, collection, pageData) {
         checkbox.dataset.selectCollection,
         decodeURIComponent(checkbox.dataset.selectId)
       );
+    });
+  });
+
+  // Every management table supports the same row selection interaction as the
+  // PvP patch table: checkboxes remain available, and clicking a non-control
+  // part of a row selects or deselects that item.
+  wrapper.querySelectorAll('tbody tr[data-select-row-id]').forEach(row => {
+    row.tabIndex = 0;
+    const selectRow = () => {
+      toggleSelect(collection, decodeURIComponent(row.dataset.selectRowId));
+    };
+
+    row.addEventListener('click', event => {
+      if (event.target.closest('input, button, select, option, textarea, a, label, .actions')) {
+        return;
+      }
+      selectRow();
+    });
+
+    row.addEventListener('keydown', event => {
+      if (event.target !== row || !['Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      selectRow();
     });
   });
 }
@@ -1076,7 +1103,13 @@ function renderPagination(collection) {
 
 function areAllPageItemsSelected(collection, pageData) {
   const state = AppState.pageStates[collection];
-  return Boolean(pageData.length && state && pageData.every(item => state.selectedIds.has(item.id)));
+  return Boolean(pageData.length && state && pageData.every(item => (
+    state.selectedIds.has(getSelectionKey(item.id))
+  )));
+}
+
+function getSelectionKey(id) {
+  return String(id);
 }
 
 function goToPage(collection, page) {
@@ -1100,9 +1133,9 @@ function toggleSelectAll(collection) {
   const pageData = state.filteredData.slice(start, end);
   
   if (checkbox.checked) {
-    pageData.forEach(item => state.selectedIds.add(item.id));
+    pageData.forEach(item => state.selectedIds.add(getSelectionKey(item.id)));
   } else {
-    pageData.forEach(item => state.selectedIds.delete(item.id));
+    pageData.forEach(item => state.selectedIds.delete(getSelectionKey(item.id)));
   }
   
   const specializedRenderers = {
@@ -1120,11 +1153,12 @@ function toggleSelectAll(collection) {
 function toggleSelect(collection, id) {
   const state = AppState.pageStates[collection];
   if (!state) return;
-  
-  if (state.selectedIds.has(id)) {
-    state.selectedIds.delete(id);
+
+  const selectionKey = getSelectionKey(id);
+  if (state.selectedIds.has(selectionKey)) {
+    state.selectedIds.delete(selectionKey);
   } else {
-    state.selectedIds.add(id);
+    state.selectedIds.add(selectionKey);
   }
 
   const specializedRenderers = {
@@ -1603,10 +1637,11 @@ function renderMembersTable() {
   html += '</tr></thead><tbody>';
   
   pageData.forEach(item => {
-    const checked = state.selectedIds.has(item.id) ? 'checked' : '';
+    const selected = state.selectedIds.has(getSelectionKey(item.id));
+    const checked = selected ? 'checked' : '';
     const nickname = item.nickname || item.displayName || '-';
     const email = item.email || '-';
-    html += `<tr>
+    html += `<tr data-select-row-id="${encodeURIComponent(String(item.id))}" class="${selected ? 'is-selected' : ''}" aria-selected="${selected}">
        <td class="checkbox-cell"><input type="checkbox" aria-label="항목 개별 선택" data-select-collection="members" data-select-id="${encodeURIComponent(String(item.id))}" ${checked}></td>
       <td><div style="font-weight:500">${nickname}</div><div style="font-size:11px;color:var(--text-secondary)">${email}</div></td>
       <td style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis">${item.id}</td>
@@ -1801,9 +1836,10 @@ function renderPermissionsTable() {
   html += '</tr></thead><tbody>';
   
   pageData.forEach(item => {
-    const checked = state.selectedIds.has(item.id) ? 'checked' : '';
+    const selected = state.selectedIds.has(getSelectionKey(item.id));
+    const checked = selected ? 'checked' : '';
     const isSuper = item.isSuperAdmin || item.email === SUPER_ADMIN_EMAIL;
-    html += `<tr>
+    html += `<tr data-select-row-id="${encodeURIComponent(String(item.id))}" class="${selected ? 'is-selected' : ''}" aria-selected="${selected}">
       <td class="checkbox-cell"><input type="checkbox" aria-label="항목 개별 선택" data-select-collection="permissions" data-select-id="${encodeURIComponent(String(item.id))}" ${checked}></td>
       <td>${isSuper ? '<span class="badge badge-warning">총괄관리자</span>' : '<span class="badge badge-info">관리자</span>'}</td>
       <td style="font-size:12px">${item.email}</td>
@@ -1964,8 +2000,9 @@ function renderSupportTable() {
   
   pageData.forEach(item => {
     const status = item.answered ? '<span class="badge badge-success">답변완료</span>' : '<span class="badge badge-warning">대기중</span>';
-    html += `<tr>
-       <td class="checkbox-cell"><input type="checkbox" aria-label="항목 개별 선택" data-select-collection="support" data-select-id="${encodeURIComponent(String(item.id))}" ${state.selectedIds.has(item.id) ? 'checked' : ''}></td>
+    const selected = state.selectedIds.has(getSelectionKey(item.id));
+    html += `<tr data-select-row-id="${encodeURIComponent(String(item.id))}" class="${selected ? 'is-selected' : ''}" aria-selected="${selected}">
+       <td class="checkbox-cell"><input type="checkbox" aria-label="항목 개별 선택" data-select-collection="support" data-select-id="${encodeURIComponent(String(item.id))}" ${selected ? 'checked' : ''}></td>
       <td style="font-size:11px">${item.id.substring(0,8)}...</td>
       <td>${formatDate(item.createdAt)}</td>
       <td>${item.title || '-'}</td>
