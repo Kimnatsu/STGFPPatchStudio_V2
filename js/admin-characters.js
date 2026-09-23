@@ -14,9 +14,9 @@
       { key: 'updatedBy', label: '관리자', type: 'default' }
     ],
     filters: [
-      { key: 'grade', label: '등급', options: ['전설', '영웅', '희귀', '일반'] },
-      { key: 'attribute', label: '속성', options: ['화염', '냉기', '전기', '암흑', '광명'] },
-      { key: 'type', label: '타입', options: ['전사', '마법사', '궁수', '탱커', '서포터'] }
+      { key: 'grade', label: '등급', options: ['특전', 'SS', 'S', 'A', 'B', 'C'] },
+      { key: 'attribute', label: '속성', options: ['力', '技', '心'] },
+      { key: 'type', label: '타입', options: ['격투', '검술', '원소', '특수'] }
     ],
     render(container) {
       createListPage(container, {

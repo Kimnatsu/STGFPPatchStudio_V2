@@ -12,7 +12,7 @@
       { key: 'updatedBy', label: '관리자', type: 'default' }
     ],
     filters: [
-      { key: 'grade', label: '등급', options: ['전설', '영웅', '희귀', '일반'] }
+      { key: 'grade', label: '등급', options: ['특전', 'SS', 'S', 'A', 'B', 'C'] }
     ],
     render(container) {
       createListPage(container, {
