@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FPPStudio - 관리자 페이지</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="./css/fppstudio.css?v=20260922-td-image-size-9" />
+  <link rel="stylesheet" href="./css/fppstudio.css?v=20260922-mobile-topbar-10" />
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -155,9 +155,6 @@
       <!-- Top Bar -->
       <header id="topBar" class="top-bar">
         <div class="top-bar-left">
-          <button id="hamburgerBtn" class="hamburger-btn" style="display:none;">
-            <i class="fas fa-bars"></i>
-          </button>
           <div class="breadcrumb" id="breadcrumb">
             <span class="breadcrumb-home" data-page="home">홈</span>
           </div>
@@ -165,6 +162,9 @@
         <div class="top-bar-right">
           <button id="viewUserPageBtn" class="icon-btn" title="사용자 페이지 보기">
             <i class="fas fa-external-link-alt"></i>
+          </button>
+          <button id="hamburgerBtn" class="hamburger-btn" title="메뉴">
+            <i class="fas fa-bars"></i>
           </button>
         </div>
       </header>
@@ -284,7 +284,7 @@
   <script src="./js/firebase.js"></script>
   <script src="./js/admin-config.js"></script>
   <script src="./js/admin-core.js"></script>
-  <script src="./js/admin-banners.js?v=20260922-td-image-size-9"></script>
+  <script src="./js/admin-banners.js?v=20260922-mobile-topbar-10"></script>
   <script src="./js/admin-characters.js"></script>
   <script src="./js/admin-support-chars.js"></script>
   <script src="./js/image-editor.js"></script>
@@ -293,6 +293,6 @@
   <script src="./js/admin-events.js"></script>
   <script src="./js/admin-notices.js"></script>
   <script src="./js/admin-system.js"></script>
-  <script src="./js/fppstudio.js?v=20260922-td-image-size-9"></script>
+  <script src="./js/fppstudio.js?v=20260922-mobile-topbar-10"></script>
 </body>
 </html>
