@@ -839,17 +839,19 @@ function renderTable(collection, columns) {
   const start = (state.page - 1) * state.itemsPerPage;
   const end = start + state.itemsPerPage;
   const pageData = state.filteredData.slice(start, end);
+  const selectedPageItems = pageData.filter(item => state.selectedIds.has(item.id)).length;
+  const hasPartialSelection = selectedPageItems > 0 && selectedPageItems < pageData.length;
   
   let html = '<table><thead><tr>';
   const allPageItemsSelected = areAllPageItemsSelected(collection, pageData);
-  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_' + collection + '" ' + (allPageItemsSelected ? 'checked' : '') + ' onchange="toggleSelectAll(\'' + collection + '\')"></th>';
+  html += '<th class="checkbox-cell"><input type="checkbox" id="selectAll_' + collection + '" aria-label="현재 페이지 전체 선택" ' + (allPageItemsSelected ? 'checked' : '') + ' onchange="toggleSelectAll(\'' + collection + '\')"></th>';
   columns.forEach(col => { html += `<th>${col.label}</th>`; });
   html += '<th>작업</th></tr></thead><tbody>';
   
   pageData.forEach(item => {
     const checked = state.selectedIds.has(item.id) ? 'checked' : '';
     html += `<tr data-id="${item.id}">`;
-    html += `<td class="checkbox-cell"><input type="checkbox" ${checked} onchange="toggleSelect('${collection}','${item.id}')"></td>`;
+    html += `<td class="checkbox-cell"><input type="checkbox" aria-label="항목 개별 선택" ${checked} onchange="toggleSelect('${collection}','${item.id}')"></td>`;
     columns.forEach(col => {
       const cellClass = col.type === 'image' || col.type === 'preview' ? ' class="image-cell"' : '';
       html += `<td${cellClass}>${renderCellContent(col, item, collection)}</td>`;
@@ -860,6 +862,11 @@ function renderTable(collection, columns) {
   
   html += '</tbody></table>';
   wrapper.innerHTML = html;
+
+  const selectAllCheckbox = wrapper.querySelector(`#selectAll_${collection}`);
+  if (selectAllCheckbox) {
+    selectAllCheckbox.indeterminate = hasPartialSelection;
+  }
 }
 
 function renderCellContent(col, item, collection) {
