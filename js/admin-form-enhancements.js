@@ -72,11 +72,11 @@
     const imageUrl = getStoredImageUrl(collection, item) || '';
     const isBanner = collection === 'banners';
     const isEvent = collection === 'events';
-    const sizeHint = isBanner
-      ? '권장 사이즈 : 1472×420 px · 최대 3 MB · jpg, png, gif'
+    const sizeHints = isBanner
+      ? ['이미지 사이즈 : 1472×420 px', '최대 용량 : 3 MB', '확장자 : jpg, png, gif']
       : isEvent
-        ? '권장 비율 : 16:9 · 최대 10 MB · jpg, png, webp, gif'
-        : '권장 사이즈 : 500×500 px · 최대 10 MB · jpg, png, webp, gif';
+        ? ['권장 비율 : 16:9', '최대 용량 : 10 MB', '확장자 : jpg, png, webp, gif']
+        : ['권장 사이즈 : 500×500 px', '최대 용량 : 10 MB', '확장자 : jpg, png, webp, gif'];
     return `
       <div class="form-group original-image-group">
         <label class="form-label">이미지 ${required ? '<span class="required">*</span>' : '<span class="form-label-optional">(선택)</span>'}</label>
@@ -85,12 +85,14 @@
             ${imageUrl ? `<img src="${esc(imageUrl)}" class="image-preview" alt="">` : '<i class="fas fa-plus"></i>'}
           </div>
           <div class="original-image-info">
-            <p>${sizeHint}</p>
+            <ul class="image-guide-list">
+              ${sizeHints.map(text => `<li>${esc(text)}</li>`).join('')}
+            </ul>
             ${hint ? `<p>${esc(hint)}</p>` : ''}
-            <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('imageUpload_${collection}').click()">
-              <i class="fas fa-upload"></i> 업로드
-            </button>
           </div>
+          <button type="button" class="btn btn-primary btn-sm image-upload-button" onclick="document.getElementById('imageUpload_${collection}').click()">
+            <i class="fas fa-upload"></i> 업로드
+          </button>
         </div>
       </div>
     `;

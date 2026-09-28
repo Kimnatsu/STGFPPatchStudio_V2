@@ -2558,10 +2558,23 @@ select.form-control {
   font-size: 26px;
 }
 .original-image-info {
+  flex: 1 1 auto;
   min-width: 0;
   color: #8b949e;
   font-size: 11px;
   line-height: 1.7;
+}
+.image-upload-button {
+  flex: 0 0 auto;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.image-guide-list {
+  margin: 0 0 5px;
+  padding-left: 16px;
+}
+.image-guide-list li {
+  margin: 0;
 }
 .original-image-info p { margin: 0 0 5px; }
 .character-entry-list {
@@ -2621,6 +2634,7 @@ select.form-control {
   .pvp-entry-fields { grid-template-columns: 1fr; }
   .original-image-upload { align-items: flex-start; }
   .original-image-info { flex: 1; }
+  .image-upload-button { align-self: flex-end; }
   .original-image-upload .banner-image-upload { width: 150px; flex-basis: 150px; }
 }
 
