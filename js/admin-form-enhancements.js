@@ -102,6 +102,7 @@
   }
 
   function characterEntries(scope, item = {}, supportOnly = false) {
+    item = item || {};
     const skills = supportOnly ? [] : (Array.isArray(item.skills) ? item.skills : []);
     const supportSkills = Array.isArray(item.supportSkills) ? item.supportSkills : [];
     const tips = Array.isArray(item.tips || item.adminTips) ? (item.tips || item.adminTips) : [];
@@ -557,7 +558,12 @@
     currentImageUrl = null;
     currentImageUploadPromise = null;
     currentImageUploadError = null;
-    await setupDetailedForm(collection, null, 'add');
+    try {
+      await setupDetailedForm(collection, null, 'add');
+    } catch (error) {
+      console.error('추가 팝업 초기화 실패:', error);
+      showToast('추가 팝업을 열 수 없습니다. 페이지를 새로고침한 뒤 다시 시도하세요.', 'error');
+    }
   };
 
   window.editItem = async function editItem(collection, id) {
@@ -571,7 +577,12 @@
     currentImageUrl = null;
     currentImageUploadPromise = null;
     currentImageUploadError = null;
-    await setupDetailedForm(collection, item, 'edit');
+    try {
+      await setupDetailedForm(collection, item, 'edit');
+    } catch (error) {
+      console.error('편집 팝업 초기화 실패:', error);
+      showToast('편집 팝업을 열 수 없습니다. 페이지를 새로고침한 뒤 다시 시도하세요.', 'error');
+    }
   };
 
   window.submitDetailedAdminForm = submitDetailedAdminForm;
