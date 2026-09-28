@@ -284,6 +284,11 @@
   </div>
 
   <!-- FPPStudio configuration and application logic -->
+  <!-- Rich-text dependencies must load before fppstudio.js so they do not
+       replace FPPStudio's internal $() DOM helper. -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-lite.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/lang/summernote-ko-KR.min.js"></script>
   <script src="./js/firebase.js"></script>
   <script src="./js/admin-config.js"></script>
   <script src="./js/admin-core.js"></script>
@@ -297,9 +302,6 @@
   <script src="./js/admin-notices.js"></script>
   <script src="./js/admin-system.js"></script>
   <script src="./js/fppstudio.js?v=20260922-mobile-topbar-10"></script>
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-lite.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/lang/summernote-ko-KR.min.js"></script>
   <script src="./js/admin-form-enhancements.js"></script>
 </body>
 </html>
