@@ -52,6 +52,25 @@
     return item?.actualId || '';
   }
 
+  async function getNextContentId(collection) {
+    const stateValues = (AppState.pageStates[collection]?.data || [])
+      .map(item => normalizeActualNumericId(item?.actualId))
+      .filter(Boolean)
+      .map(Number);
+    const values = [...stateValues];
+
+    if (!values.length) {
+      const snapshot = await db.collection(collection).get();
+      snapshot.forEach(doc => {
+        const data = doc.data() || {};
+        const id = getActualNumericId(data, collection, doc.id);
+        if (id) values.push(Number(id));
+      });
+    }
+
+    return String((values.length ? Math.max(...values) : 0) + 1);
+  }
+
   function modalField(label, input, hint = '') {
     return `
       <div class="form-group">
@@ -231,11 +250,15 @@
     return { '버프': 'buff', '너프': 'nerf', '기능 수정': 'fix' }[normalized] || String(type || '');
   }
 
-  function formHtml(collection, item, mode) {
+  function formHtml(collection, item, mode, nextId = '') {
     const scope = mode === 'add' ? 'add' : 'edit';
     const isEdit = mode === 'edit';
     const currentVisible = item ? (item.visible ?? item.published ?? true) : true;
-    const idField = item ? modalField('ID', `<input class="form-input" value="${esc(displayId(item))}" readonly>`) : '';
+    const idValue = item ? displayId(item) : nextId;
+    const idField = modalField(
+      'ID',
+      `<input class="form-input" id="${scope}_recordId" value="${esc(idValue)}" readonly>`
+    );
 
     if (collection === 'banners') {
       return `<div class="original-form">${idField}
@@ -276,6 +299,7 @@
     if (collection === 'pvpPatch') {
       const patches = item?.patches || [];
       return `<div class="original-form">
+        ${idField}
         <div class="original-form-section"><div class="original-section-title"><i class="fas fa-calendar-alt"></i> 패치 날짜</div>
           <input type="date" class="form-input compact-input" id="${scope}_patchDate" value="${esc(dateString(item?.patchDate || item?.date || ''))}">
           <span class="form-hint">미입력 시 현재 날짜로 저장됩니다.</span>
@@ -335,11 +359,11 @@
     return '';
   }
 
-  function formConfig(collection, item, mode) {
+  function formConfig(collection, item, mode, nextId = '') {
     const scope = mode === 'add' ? 'add' : 'edit';
     return {
       title: `${mode === 'add' ? '추가' : '수정'} · ${PAGE_CONFIG[collection]?.title || collection}`,
-      formHtml: formHtml(collection, item, mode),
+      formHtml: formHtml(collection, item, mode, nextId),
       hasImage: ['banners', 'characters', 'supportCharacters', 'events'].includes(collection),
       scope
     };
@@ -389,7 +413,8 @@
 
   async function setupDetailedForm(collection, item, mode) {
     if (collection === 'pvpPatch') await ensurePvpOptionData();
-    const config = formConfig(collection, item, mode);
+    const nextId = mode === 'add' ? await getNextContentId(collection) : '';
+    const config = formConfig(collection, item, mode, nextId);
     showModal(config.title, config.formHtml, `
       <button class="btn btn-secondary" onclick="closeModal()">취소</button>
       <button class="btn btn-primary" onclick="submitDetailedAdminForm('${collection}','${mode}',${item ? `'${esc(item.id)}'` : 'null'})">
@@ -411,6 +436,8 @@
     const data = {};
     const get = id => $(`#${scope}_${id}`)?.value?.trim() || '';
     const visible = $(`#${scope}_published`)?.checked ?? true;
+    const recordId = get('recordId');
+    const idData = mode === 'add' && recordId ? { id: Number(recordId) } : {};
 
     if (collection === 'banners') {
       const title = get('title');
@@ -420,7 +447,7 @@
       if (!currentImageUrl && !getStoredImageUrl(collection, item)) {
         showToast('배너 이미지를 등록하세요.', 'warning'); return null;
       }
-      return { title, ...action, isActive: document.querySelector(`input[name="${scope}_active"]:checked`)?.value === 'true', visible, published: visible };
+      return { ...idData, title, ...action, isActive: document.querySelector(`input[name="${scope}_active"]:checked`)?.value === 'true', visible, published: visible };
     }
 
     if (collection === 'characters') {
@@ -431,6 +458,7 @@
         showToast('캐릭터 이미지를 등록하세요.', 'warning'); return null;
       }
       return {
+        ...idData,
         name, grade: get('grade'), attr: get('attribute'), attribute: get('attribute'), type: get('type'),
         skills: collectCharacterEntries(scope, 'skills'),
         supportSkills: collectCharacterEntries(scope, 'supportSkills'),
@@ -444,7 +472,7 @@
       if (!name || (!currentImageUrl && !getStoredImageUrl(collection, item))) {
         showToast(name ? '서폿 캐릭터 이미지를 등록하세요.' : '캐릭터 이름을 입력하세요.', 'warning'); return null;
       }
-      return { name, grade: get('grade'), supportSkills: collectCharacterEntries(scope, 'supportSkills'), adminTipItems: collectCharacterEntries(scope, 'tips'), published: visible, visible };
+      return { ...idData, name, grade: get('grade'), supportSkills: collectCharacterEntries(scope, 'supportSkills'), adminTipItems: collectCharacterEntries(scope, 'tips'), published: visible, visible };
     }
 
     if (collection === 'pvpPatch') {
@@ -456,28 +484,28 @@
       })).filter(patch => patch.text);
       if (!charId && !supportCharId) return showToast('캐릭터나 서폿 캐릭터 중 하나를 선택하세요.', 'warning'), null;
       if (!patches.length) return showToast('패치 항목을 1개 이상 추가하세요.', 'warning'), null;
-      return { charId: charId ? Number(charId) : null, supportCharId: supportCharId ? Number(supportCharId) : null, patches, patchDate: get('patchDate') || new Date().toISOString().slice(0, 10), visible, published: visible };
+      return { ...idData, charId: charId ? Number(charId) : null, supportCharId: supportCharId ? Number(supportCharId) : null, patches, patchDate: get('patchDate') || new Date().toISOString().slice(0, 10), visible, published: visible };
     }
 
     if (collection === 'patchNotes' || collection === 'notices') {
       const title = get('title');
       const content = getEditorValue(scope, collection);
       if (!title || !content.replace(/<[^>]*>/g, '').trim()) return showToast('제목과 본문은 필수입니다.', 'warning'), null;
-      return { title, content, author: '관리자', visible, published: visible, ...(collection === 'notices' ? { pinned: $(`#${scope}_pinned`)?.checked || false } : {}) };
+      return { ...idData, title, content, author: '관리자', visible, published: visible, ...(collection === 'notices' ? { pinned: $(`#${scope}_pinned`)?.checked || false } : {}) };
     }
 
     if (collection === 'events') {
       const title = get('title');
       const content = getEditorValue(scope, collection);
       if (!title || !get('startDate') || !content.replace(/<[^>]*>/g, '').trim()) return showToast('시작일, 제목, 본문은 필수입니다.', 'warning'), null;
-      return { title, content, text: content, startDate: get('startDate'), endDate: get('endDate') || null, author: AppState.currentUser?.email?.split('@')[0] || '관리자', published: visible, visible };
+      return { ...idData, title, content, text: content, startDate: get('startDate'), endDate: get('endDate') || null, author: AppState.currentUser?.email?.split('@')[0] || '관리자', published: visible, visible };
     }
 
     if (collection === 'boards') {
       const title = get('title');
       const content = getEditorValue(scope, collection);
       if (!title) return showToast('제목을 입력하세요.', 'warning'), null;
-      return { title, text: content, content, category: get('category'), published: visible, visible };
+      return { ...idData, title, text: content, content, category: get('category'), published: visible, visible };
     }
 
     return null;
@@ -493,7 +521,7 @@
       await currentImageUploadPromise;
       if (currentImageUploadError) throw currentImageUploadError;
       if (collection === 'characters' || collection === 'supportCharacters') {
-        if (mode === 'add') data.id = await getNextCharacterId(collection);
+        if (mode === 'add' && !data.id) data.id = await getNextCharacterId(collection);
       }
       if (currentImageUrl && currentImageUrl !== getStoredImageUrl(collection, item)) {
         data[getImageField(collection)] = currentImageUrl;
