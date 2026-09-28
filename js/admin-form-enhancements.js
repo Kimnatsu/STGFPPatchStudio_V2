@@ -48,6 +48,10 @@
     return AppState.pageStates[collection]?.data?.find(item => String(item.id) === String(id));
   }
 
+  function displayId(item) {
+    return item?.actualId || '';
+  }
+
   function modalField(label, input, hint = '') {
     return `
       <div class="form-group">
@@ -182,7 +186,8 @@
           data.push({
             ...source,
             id: doc.id,
-            characterId: source.id ?? source.num ?? source.no ?? source.characterId ?? doc.id
+            actualId: getActualNumericId(source, collection, doc.id),
+            characterId: getActualNumericId(source, collection, doc.id)
           });
         });
         AppState.pageStates[collection] = {
@@ -228,7 +233,7 @@
     const scope = mode === 'add' ? 'add' : 'edit';
     const isEdit = mode === 'edit';
     const currentVisible = item ? (item.visible ?? item.published ?? true) : true;
-    const idField = item ? modalField('ID', `<input class="form-input" value="${esc(item.id)}" readonly>`) : '';
+    const idField = item ? modalField('ID', `<input class="form-input" value="${esc(displayId(item))}" readonly>`) : '';
 
     if (collection === 'banners') {
       return `<div class="original-form">${idField}
@@ -291,6 +296,7 @@
     if (collection === 'patchNotes' || collection === 'notices') {
       const title = collection === 'patchNotes' ? '패치노트' : '공지사항';
       return `<div class="original-form">
+        ${idField}
         ${modalField('제목 <span class="required">*</span>', `<input class="form-input" id="${scope}_title" maxlength="200" value="${esc(item?.title || '')}" placeholder="${title} 제목">`)}
         <div class="form-group"><label class="form-label">본문 <span class="required">*</span></label>
           <textarea class="form-input original-editor" id="${scope}_content">${item?.content || ''}</textarea></div>
@@ -300,6 +306,7 @@
 
     if (collection === 'events') {
       return `<div class="original-form">
+        ${idField}
         <div class="original-form-section"><div class="original-section-title"><i class="fas fa-calendar-alt"></i> 이벤트 정보</div>
           <div class="original-form-grid">${modalField('시작일 <span class="required">*</span>', `<input type="date" class="form-input" id="${scope}_startDate" value="${esc(dateString(item?.startDate || item?.date || item?.createdAt))}">`)}
           ${modalField('종료일', `<input type="date" class="form-input" id="${scope}_endDate" value="${esc(dateString(item?.endDate))}">`)}</div>
@@ -314,6 +321,7 @@
 
     if (collection === 'boards') {
       return `<div class="original-form">
+        ${idField}
         ${modalField('제목 <span class="required">*</span>', `<input class="form-input" id="${scope}_title" maxlength="200" value="${esc(item?.title || '')}" placeholder="게시글 제목">`)}
         ${modalField('카테고리', selectField(`${scope}_category`, ['', '자유', '정보', '질문', '자랑'].map(v => ({ value: v, label: v || '카테고리 선택' })), item?.category || ''))}
         <div class="form-group"><label class="form-label">본문</label>

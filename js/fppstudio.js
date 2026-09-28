@@ -113,6 +113,42 @@ function truncateText(text, maxLen = 5) {
   return text.length > maxLen ? text.substring(0, maxLen) + '...' : text;
 }
 
+// Firestore document IDs are internal CRUD keys. Content records use their
+// numeric IDs in the public site, so keep the two identifiers separate.
+const ACTUAL_NUMERIC_ID_FIELDS = Object.freeze({
+  banners: ['id', 'bannerId'],
+  characters: ['id', 'num', 'no', 'characterId'],
+  supportCharacters: ['id', 'num', 'no', 'characterId', 'supportCharacterId'],
+  patchNotes: ['id', 'patchNoteId', 'patchnoteId'],
+  boards: ['id', 'boardId', 'postId'],
+  events: ['id', 'eventId'],
+  notices: ['id', 'noticeId']
+});
+
+function normalizeActualNumericId(value) {
+  if (typeof value === 'number') {
+    return Number.isInteger(value) && Number.isFinite(value) ? String(value) : '';
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    return /^\d+$/.test(normalized) ? normalized : '';
+  }
+  return '';
+}
+
+function getActualNumericId(data, collection, fallback = '') {
+  const fields = ACTUAL_NUMERIC_ID_FIELDS[collection] || ['id'];
+  for (const field of fields) {
+    const id = normalizeActualNumericId(data?.[field]);
+    if (id) return id;
+  }
+  return normalizeActualNumericId(fallback);
+}
+
+function getDisplayId(item) {
+  return item?.actualId || '';
+}
+
 // ===== Authentication =====
 function isAdminEmail(email) {
   return ADMIN_EMAILS.includes(email);
@@ -625,18 +661,17 @@ async function hydrateCollectionData(collection, snapshot) {
   const rows = [];
   snapshot.forEach(doc => {
     const sourceData = doc.data();
+    const actualId = getActualNumericId(sourceData, collection, doc.id);
     // Firestore document ID must remain the CRUD key. Some records also have
-    // an `id` field, which must not overwrite the actual document ID.
+    // an `id` field, which must not overwrite the actual document ID. The
+    // numeric content ID is kept separately for display.
     rows.push({
       ...sourceData,
       id: doc.id,
+      actualId,
       ...(collection === 'characters' || collection === 'supportCharacters'
         ? {
-            characterId: sourceData.id
-              ?? sourceData.num
-              ?? sourceData.no
-              ?? sourceData.characterId
-              ?? doc.id
+            characterId: actualId
           }
         : {})
     });
@@ -999,9 +1034,11 @@ function bindTableSelection(wrapper, collection, pageData) {
 function renderCellContent(col, item, collection) {
   // 공개 서비스의 캐릭터 컬렉션은 img 필드를 사용합니다.
   // imageUrl은 기존 관리자 데이터와의 호환을 위해 fallback으로 유지합니다.
-  const value = col.key === 'img'
-    ? (item.img || item.imageUrl)
-    : item[col.key];
+  const value = col.key === 'id'
+    ? getDisplayId(item)
+    : col.key === 'img'
+      ? (item.img || item.imageUrl)
+      : item[col.key];
   
   switch(col.type) {
     case 'image':
@@ -1628,7 +1665,7 @@ async function revertChanges(collection) {
       for (const savedItem of lastSaved) {
         const currentItem = state.data.find(d => d.id === savedItem.id);
         if (currentItem) {
-          const { id, ...data } = savedItem;
+          const { id, actualId, ...data } = savedItem;
           await db.collection(collection).doc(id).set(data, { merge: true });
         }
       }
@@ -2258,7 +2295,7 @@ function importData() {
         
         for (const [col, items] of Object.entries(data)) {
           for (const item of items) {
-            const { id, ...docData } = item;
+            const { id, actualId, ...docData } = item;
             await db.collection(col).doc(id).set(docData, { merge: true });
           }
         }
@@ -2970,7 +3007,7 @@ function getEditFormConfig(collection, item) {
       formHtml: `
         <div class="form-group">
           <label for="edit_id">ID</label>
-          <input type="text" class="form-control" id="edit_id" value="${escapeFormValue(item.id)}" disabled>
+          <input type="text" class="form-control" id="edit_id" value="${escapeFormValue(getDisplayId(item))}" disabled>
         </div>
         <div class="form-group">
           <label for="edit_title">제목 <span class="form-label-hint">(최대 50자)</span></label>
@@ -3031,7 +3068,7 @@ function getEditFormConfig(collection, item) {
       formHtml: `
         <div class="form-group">
           <label for="edit_characterId">ID</label>
-          <input type="text" class="form-control" id="edit_characterId" value="${escapeFormValue(item.characterId ?? item.id)}" disabled>
+          <input type="text" class="form-control" id="edit_characterId" value="${escapeFormValue(getDisplayId(item))}" disabled>
         </div>
         <div class="form-group">
           <label for="edit_name">캐릭터 이름 <span class="form-label-hint">(최대 20자)</span></label>

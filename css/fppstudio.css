@@ -2345,8 +2345,8 @@ select.form-control {
   background: var(--bg-card);
 }
 
-/* BEGIN REMOVED SOURCE-THEME DECLARATIONS
-   The source admin's dark modal declarations are intentionally disabled.
+/* Detailed form modal layout.
+   The later adaptation rules below replace the source theme colors. */
 .original-modal-container {
   display: flex;
   flex-direction: column;
@@ -2624,7 +2624,6 @@ select.form-control {
   .original-image-upload .banner-image-upload { width: 150px; flex-basis: 150px; }
 }
 
-*/
 /* FPPStudio modal layout and visual adaptation
    Detailed dialogs use the new page's light card system. */
 .original-modal-container {
