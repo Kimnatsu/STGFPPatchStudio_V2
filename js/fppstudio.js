@@ -624,9 +624,22 @@ async function loadCollectionData(collection, columns) {
 async function hydrateCollectionData(collection, snapshot) {
   const rows = [];
   snapshot.forEach(doc => {
+    const sourceData = doc.data();
     // Firestore document ID must remain the CRUD key. Some records also have
     // an `id` field, which must not overwrite the actual document ID.
-    rows.push({ ...doc.data(), id: doc.id });
+    rows.push({
+      ...sourceData,
+      id: doc.id,
+      ...(collection === 'characters' || collection === 'supportCharacters'
+        ? {
+            characterId: sourceData.id
+              ?? sourceData.num
+              ?? sourceData.no
+              ?? sourceData.characterId
+              ?? doc.id
+          }
+        : {})
+    });
   });
 
   if (collection === 'banners'
@@ -1193,6 +1206,9 @@ async function handleAddItem(collection) {
   if (collection === 'banners') {
     initializeBannerClickActionFields('add');
   }
+  if (collection === 'characters') {
+    initializeCharacterDetailFields('add');
+  }
 
   // Setup image upload if needed
   if (config.hasImage) {
@@ -1206,17 +1222,28 @@ async function submitAddItem(collection) {
   
   const formData = config.getData();
   if (!formData) return;
-  const { imageFile, ...data } = formData;
+  const { imageFile, adminTipItems, ...data } = formData;
   
   try {
     await currentImageUploadPromise;
     if (currentImageUploadError) throw currentImageUploadError;
+    if (collection === 'characters') {
+      data.id = await getNextCharacterId(collection);
+    }
     data.createdAt = FieldValue.serverTimestamp();
     data.adminEmail = AppState.currentUser.email;
     data.updatedBy = data.updatedBy || AppState.currentUser.email;
     if (currentImageUrl) data[getImageField(collection)] = currentImageUrl;
     
     const docRef = await db.collection(collection).add(data);
+    if (collection === 'characters') {
+      try {
+        await persistAdminCharacterTips(data.id, adminTipItems || []);
+      } catch (tipError) {
+        console.warn('관리자 꿀팁을 저장하지 못했습니다.', tipError);
+        showToast('캐릭터는 저장되었지만 관리자 꿀팁 저장에 실패했습니다.', 'warning');
+      }
+    }
     
     closeModal();
     showToast('추가되었습니다.', 'success');
@@ -1240,6 +1267,15 @@ async function editItem(collection, id) {
   const item = state.data.find(d => d.id === id);
   if (!item) return;
   
+  if (collection === 'characters') {
+    try {
+      item.adminTips = await loadAdminCharacterTips(item.characterId ?? item.id);
+    } catch (error) {
+      console.warn('관리자 꿀팁을 불러오지 못했습니다.', error);
+      item.adminTips = [];
+    }
+  }
+
   currentImageFile = null;
   currentImagePreviewUrl = null;
   currentImageUrl = null;
@@ -1255,6 +1291,9 @@ async function editItem(collection, id) {
   
   if (collection === 'banners') {
     initializeBannerClickActionFields('edit', item);
+  }
+  if (collection === 'characters') {
+    initializeCharacterDetailFields('edit', item);
   }
 
   if (config.hasImage) {
@@ -1274,7 +1313,7 @@ async function submitEditItem(collection, id) {
   
   const formData = config.getData();
   if (!formData) return;
-  const { imageFile, ...data } = formData;
+  const { imageFile, adminTipItems, ...data } = formData;
   
   try {
     await currentImageUploadPromise;
@@ -1287,6 +1326,14 @@ async function submitEditItem(collection, id) {
     data.updatedAt = FieldValue.serverTimestamp();
     data.updatedBy = AppState.currentUser.email;
     await db.collection(collection).doc(id).update(data);
+    if (collection === 'characters') {
+      try {
+        await persistAdminCharacterTips(item.characterId ?? item.id, adminTipItems || []);
+      } catch (tipError) {
+        console.warn('관리자 꿀팁을 저장하지 못했습니다.', tipError);
+        showToast('캐릭터는 수정되었지만 관리자 꿀팁 저장에 실패했습니다.', 'warning');
+      }
+    }
     
     closeModal();
     showToast('수정되었습니다.', 'success');
@@ -2454,6 +2501,208 @@ function getBannerClickActionData(scope) {
   return { clickAction: 'none', link: null, internalTab: null };
 }
 
+const CHARACTER_DEFAULT_SKILLS = Object.freeze([
+  { type: 'skill1', label: '스킬 1' },
+  { type: 'skill2', label: '스킬 2' },
+  { type: 'skill3', label: '스킬 3', suffix: '필살기' },
+  { type: 'skill4', label: '스킬 4', suffix: '궁극기' },
+  { type: 'cardSkill1', label: '카드 스킬 1' },
+  { type: 'cardSkill2', label: '카드 스킬 2' }
+]);
+
+function getCharacterSkillLabel(type) {
+  const skill = CHARACTER_DEFAULT_SKILLS.find(item => item.type === type);
+  return skill ? `${skill.label}${skill.suffix ? ` (${skill.suffix})` : ''}` : '스킬';
+}
+
+function renderCharacterEntry(scope, section, item = {}, index = 0) {
+  const isTip = section === 'tips';
+  const type = item.type || 'custom';
+  const title = isTip
+    ? '꿀팁'
+    : section === 'skills'
+      ? getCharacterSkillLabel(type)
+      : '서포트 스킬';
+  const value = isTip ? (item.text || item.content || '') : (item.name || '');
+  const description = item.desc || item.description || '';
+  const entryId = `${scope}_${section}_${index}`;
+
+  return `
+    <div class="character-entry" data-character-entry="${section}" data-entry-type="${escapeFormValue(type)}">
+      <div class="character-entry-header">
+        <strong>${title}</strong>
+        ${isTip ? '<span class="character-entry-author">작성자: 관리자</span>' : ''}
+        <button type="button" class="character-entry-remove" onclick="removeCharacterEntry('${entryId}')">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+      </div>
+      ${isTip
+        ? `<textarea class="form-control character-entry-text" id="${entryId}_text" maxlength="300" placeholder="캐릭터 꿀팁을 입력하세요">${escapeFormValue(value)}</textarea>`
+        : `<input type="text" class="form-control character-entry-name" id="${entryId}_name" value="${escapeFormValue(value)}" placeholder="${section === 'skills' ? '스킬 이름' : '서포트 스킬 이름'}">
+           <textarea class="form-control character-entry-description" id="${entryId}_desc" maxlength="1000" placeholder="스킬 설명">${escapeFormValue(description)}</textarea>`}
+    </div>
+  `;
+}
+
+function initializeCharacterDetailFields(scope, item = {}) {
+  ['skills', 'supportSkills', 'tips'].forEach(section => {
+    const list = $(`#${scope}_${section}List`);
+    if (!list) return;
+    const source = section === 'skills'
+      ? item.skills
+      : section === 'supportSkills'
+        ? item.supportSkills
+        : (item.tips || item.adminTips);
+    const entries = Array.isArray(source) ? source : [];
+    list.innerHTML = entries
+      .map((entry, index) => renderCharacterEntry(scope, section, entry, index))
+      .join('');
+  });
+
+  const defaultSkills = $(`#${scope}_defaultSkills`);
+  const addDefaultButton = $(`#${scope}_addDefaultSkills`);
+  if (defaultSkills && addDefaultButton) {
+    defaultSkills.checked = false;
+    addDefaultButton.disabled = true;
+    addDefaultButton.dataset.defaultAdded = 'false';
+  }
+}
+
+function toggleCharacterDefaultSkills(scope) {
+  const checkbox = $(`#${scope}_defaultSkills`);
+  const button = $(`#${scope}_addDefaultSkills`);
+  if (!checkbox || !button) return;
+  button.disabled = !checkbox.checked || button.dataset.defaultAdded === 'true';
+}
+
+function addCharacterDefaultSkills(scope) {
+  const checkbox = $(`#${scope}_defaultSkills`);
+  const button = $(`#${scope}_addDefaultSkills`);
+  const list = $(`#${scope}_skillsList`);
+  if (!checkbox?.checked || !button || !list || button.dataset.defaultAdded === 'true') return;
+
+  const startIndex = list.querySelectorAll('[data-character-entry="skills"]').length;
+  list.insertAdjacentHTML(
+    'beforeend',
+    CHARACTER_DEFAULT_SKILLS.map((skill, index) => renderCharacterEntry(
+      scope,
+      'skills',
+      { type: skill.type },
+      startIndex + index
+    )).join('')
+  );
+  button.dataset.defaultAdded = 'true';
+  button.disabled = true;
+}
+
+function addCharacterEntry(scope, section) {
+  const list = $(`#${scope}_${section}List`);
+  if (!list) return;
+  const index = list.querySelectorAll('[data-character-entry="${section}"]').length;
+  list.insertAdjacentHTML(
+    'beforeend',
+    renderCharacterEntry(scope, section, { type: 'custom' }, index)
+  );
+}
+
+function removeCharacterEntry(entryId) {
+  const entry = $(`#${entryId}_name`)?.closest('.character-entry')
+    || $(`#${entryId}_text`)?.closest('.character-entry')
+    || document.querySelector(`[id^="${entryId}"]`)?.closest('.character-entry');
+  if (entry) entry.remove();
+}
+
+function collectCharacterEntries(scope, section) {
+  return Array.from(document.querySelectorAll(
+    `#${scope}_${section}List [data-character-entry="${section}"]`
+  )).map(entry => {
+    const isTip = section === 'tips';
+    const type = entry.dataset.entryType || 'custom';
+    const text = entry.querySelector('.character-entry-text')?.value.trim() || '';
+    const name = entry.querySelector('.character-entry-name')?.value.trim() || '';
+    const desc = entry.querySelector('.character-entry-description')?.value.trim() || '';
+
+    if (isTip) {
+      return text ? {
+        text,
+        author: '관리자',
+        uid: AppState.currentUser?.uid || '',
+        isAdminTip: true
+      } : null;
+    }
+    return name || desc ? { type, name, desc } : null;
+  }).filter(Boolean);
+}
+
+async function getNextCharacterId(collection) {
+  const values = [];
+  const state = AppState.pageStates[collection];
+  (state?.data || []).forEach(item => {
+    const value = Number(item.characterId ?? item.id);
+    if (Number.isFinite(value)) values.push(value);
+  });
+
+  if (!values.length) {
+    const snapshot = await db.collection(collection).get();
+    snapshot.forEach(doc => {
+      const data = doc.data() || {};
+      const value = Number(data.id ?? data.num ?? data.no ?? data.characterId ?? doc.id);
+      if (Number.isFinite(value)) values.push(value);
+    });
+  }
+
+  return (values.length ? Math.max(...values) : 0) + 1;
+}
+
+async function persistAdminCharacterTips(characterId, tips) {
+  const tipCollection = db.collection(
+    `tips_${String(characterId).replace(/[^\w-]/g, '_')}`
+  );
+  const existing = await tipCollection.where('isAdminTip', '==', true).get();
+
+  if (!existing.empty) {
+    const deleteBatch = db.batch();
+    existing.forEach(doc => deleteBatch.delete(doc.ref));
+    await deleteBatch.commit();
+  }
+
+  if (!tips.length) return;
+  const writeBatch = db.batch();
+  const date = new Date().toISOString().slice(0, 10);
+  tips.forEach((tip, index) => {
+    const ref = tipCollection.doc(`admin_${index + 1}`);
+    writeBatch.set(ref, {
+      text: tip.text,
+      author: '관리자',
+      uid: AppState.currentUser?.uid || '',
+      avatar: AppState.currentUser?.photoURL || '',
+      isAdminTip: true,
+      date,
+      upBy: [],
+      downBy: [],
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
+    });
+  });
+  await writeBatch.commit();
+}
+
+async function loadAdminCharacterTips(characterId) {
+  const tipCollection = db.collection(
+    `tips_${String(characterId).replace(/[^\w-]/g, '_')}`
+  );
+  const snapshot = await tipCollection.where('isAdminTip', '==', true).get();
+  return snapshot.docs.map(doc => {
+    const data = doc.data() || {};
+    return {
+      text: data.text || data.content || '',
+      author: '관리자',
+      uid: data.uid || '',
+      isAdminTip: true
+    };
+  }).filter(item => item.text);
+}
+
 function getAddFormConfig(collection) {
   const configs = {
     banners: {
@@ -2524,17 +2773,97 @@ function getAddFormConfig(collection) {
       title: '캐릭터 추가',
       hasImage: true,
       formHtml: `
-        <div class="form-group"><label>이름</label><input type="text" class="form-control" id="add_name" placeholder="캐릭터 이름"></div>
-        <div class="form-group"><label>이미지</label><div class="image-upload" id="imageUpload_characters"><i class="fas fa-cloud-upload-alt"></i><p>클릭하여 이미지 업로드</p></div></div>
-        <div class="form-group"><label>등급</label><select class="form-control" id="add_grade"><option value="전설">전설</option><option value="영웅">영웅</option><option value="희귀">희귀</option><option value="일반">일반</option></select></div>
-        <div class="form-group"><label>속성</label><select class="form-control" id="add_attribute"><option value="화염">화염</option><option value="냉기">냉기</option><option value="전기">전기</option><option value="암흑">암흑</option><option value="광명">광명</option></select></div>
-        <div class="form-group"><label>타입</label><select class="form-control" id="add_type"><option value="전사">전사</option><option value="마법사">마법사</option><option value="궁수">궁수</option><option value="탱커">탱커</option><option value="서포터">서포터</option></select></div>
+        <div class="form-group">
+          <label for="add_characterId">ID</label>
+          <input type="text" class="form-control" id="add_characterId" value="저장 시 자동 지정" disabled>
+        </div>
+        <div class="form-group">
+          <label for="add_name">캐릭터 이름 <span class="form-label-hint">(최대 20자)</span></label>
+          <input type="text" class="form-control" id="add_name" maxlength="20" placeholder="캐릭터 이름">
+        </div>
+        <div class="form-group">
+          <label for="add_grade">등급 선택</label>
+          <select class="form-control" id="add_grade">
+            <option value="특전">특전</option><option value="SS">SS</option><option value="S">S</option>
+            <option value="A">A</option><option value="B">B</option><option value="C">C</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="add_attribute">속성 선택</label>
+          <select class="form-control" id="add_attribute">
+            <option value="힘">힘</option><option value="기">기</option><option value="심">심</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="add_type">타입 선택</label>
+          <select class="form-control" id="add_type">
+            <option value="격투">격투</option><option value="검사">검사</option>
+            <option value="원소">원소</option><option value="특수">특수</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>이미지 등록 <span class="required-mark">*</span></label>
+          <div class="character-image-upload-row">
+            <div class="image-upload character-image-upload" id="imageUpload_characters" aria-label="캐릭터 이미지 업로드">
+              <i class="fas fa-plus"></i>
+            </div>
+            <div class="character-image-upload-info">
+              <ul>
+                <li>이미지 사이즈 : 500×500 px (자동 리사이즈)</li>
+                <li>정사각형 비율로 자른 뒤 저장됩니다.</li>
+              </ul>
+              <button type="button" class="btn btn-primary character-upload-button" onclick="document.getElementById('imageUpload_characters').click()">
+                업로드 <i class="fas fa-upload"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group character-detail-group">
+          <div class="character-section-heading">
+            <label>스킬 목록</label>
+            <div class="character-section-actions">
+              <label class="checkbox-label"><input type="checkbox" id="add_defaultSkills" onchange="toggleCharacterDefaultSkills('add')"><span>기본 세트 생성</span></label>
+              <button type="button" class="btn btn-secondary btn-sm" id="add_addDefaultSkills" onclick="addCharacterDefaultSkills('add')" disabled>스킬 추가</button>
+            </div>
+          </div>
+          <div class="character-entry-list" id="add_skillsList"></div>
+        </div>
+        <div class="form-group character-detail-group">
+          <div class="character-section-heading">
+            <label>서포트 스킬</label>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addCharacterEntry('add','supportSkills')">스킬 추가</button>
+          </div>
+          <div class="character-entry-list" id="add_supportSkillsList"></div>
+        </div>
+        <div class="form-group character-detail-group">
+          <div class="character-section-heading">
+            <label>꿀팁</label>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addCharacterEntry('add','tips')">꿀팁 추가</button>
+          </div>
+          <div class="character-entry-list" id="add_tipsList"></div>
+        </div>
         <div class="form-check"><input type="checkbox" id="add_published" checked><label>노출</label></div>
       `,
       getData: () => {
-        const name = $('#add_name').value;
+        const name = $('#add_name').value.trim();
         if (!name) { showToast('이름을 입력하세요.', 'warning'); return null; }
-        return { name, grade: $('#add_grade').value, attribute: $('#add_attribute').value, type: $('#add_type').value, published: $('#add_published').checked, imageFile: currentImageFile };
+        if (name.length > 20) { showToast('캐릭터 이름은 20자 이내로 입력하세요.', 'warning'); return null; }
+        if (!currentImageUrl && !currentImageUploadPromise) {
+          showToast('캐릭터 이미지를 등록하고 편집 결과를 적용하세요.', 'warning');
+          return null;
+        }
+        return {
+          name,
+          grade: $('#add_grade').value,
+          attr: $('#add_attribute').value,
+          attribute: $('#add_attribute').value,
+          type: $('#add_type').value,
+          published: $('#add_published').checked,
+          skills: collectCharacterEntries('add', 'skills'),
+          supportSkills: collectCharacterEntries('add', 'supportSkills'),
+          adminTipItems: collectCharacterEntries('add', 'tips'),
+          imageFile: currentImageFile
+        };
       }
     },
     supportCharacters: {
@@ -2700,17 +3029,75 @@ function getEditFormConfig(collection, item) {
       title: '캐릭터 수정',
       hasImage: true,
       formHtml: `
-        <div class="form-group"><label>이름</label><input type="text" class="form-control" id="edit_name" value="${item.name || ''}"></div>
-        <div class="form-group"><label>이미지</label><div class="image-upload" id="imageUpload_characters">${getStoredImageUrl('characters', item) ? `<img src="${getStoredImageUrl('characters', item)}" class="image-preview">` : '<i class="fas fa-cloud-upload-alt"></i><p>클릭하여 이미지 업로드</p>'}</div></div>
-        <div class="form-group"><label>등급</label><select class="form-control" id="edit_grade"><option value="전설" ${item.grade==='전설'?'selected':''}>전설</option><option value="영웅" ${item.grade==='영웅'?'selected':''}>영웅</option><option value="희귀" ${item.grade==='희귀'?'selected':''}>희귀</option><option value="일반" ${item.grade==='일반'?'selected':''}>일반</option></select></div>
-        <div class="form-group"><label>속성</label><select class="form-control" id="edit_attribute"><option value="화염" ${item.attribute==='화염'?'selected':''}>화염</option><option value="냉기" ${item.attribute==='냉기'?'selected':''}>냉기</option><option value="전기" ${item.attribute==='전기'?'selected':''}>전기</option><option value="암흑" ${item.attribute==='암흑'?'selected':''}>암흑</option><option value="광명" ${item.attribute==='광명'?'selected':''}>광명</option></select></div>
-        <div class="form-group"><label>타입</label><select class="form-control" id="edit_type"><option value="전사" ${item.type==='전사'?'selected':''}>전사</option><option value="마법사" ${item.type==='마법사'?'selected':''}>마법사</option><option value="궁수" ${item.type==='궁수'?'selected':''}>궁수</option><option value="탱커" ${item.type==='탱커'?'selected':''}>탱커</option><option value="서포터" ${item.type==='서포터'?'selected':''}>서포터</option></select></div>
-        <div class="form-check"><input type="checkbox" id="edit_published" ${item.published ? 'checked' : ''}><label>노출</label></div>
+        <div class="form-group">
+          <label for="edit_characterId">ID</label>
+          <input type="text" class="form-control" id="edit_characterId" value="${escapeFormValue(item.characterId ?? item.id)}" disabled>
+        </div>
+        <div class="form-group">
+          <label for="edit_name">캐릭터 이름 <span class="form-label-hint">(최대 20자)</span></label>
+          <input type="text" class="form-control" id="edit_name" maxlength="20" value="${escapeFormValue(item.name || '')}">
+        </div>
+        <div class="form-group">
+          <label>이미지 등록 <span class="required-mark">*</span></label>
+          <div class="character-image-upload-row">
+            <div class="image-upload character-image-upload ${getStoredImageUrl('characters', item) ? 'has-image' : ''}" id="imageUpload_characters" aria-label="캐릭터 이미지 업로드">
+              ${getStoredImageUrl('characters', item)
+                ? `<img src="${escapeFormValue(getStoredImageUrl('characters', item))}" class="image-preview" alt="">`
+                : '<i class="fas fa-plus"></i>'}
+            </div>
+            <div class="character-image-upload-info">
+              <ul>
+                <li>이미지 사이즈 : 500×500 px (자동 리사이즈)</li>
+                <li>정사각형 비율로 자른 뒤 저장됩니다.</li>
+              </ul>
+              <button type="button" class="btn btn-primary character-upload-button" onclick="document.getElementById('imageUpload_characters').click()">
+                업로드 <i class="fas fa-upload"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group character-detail-group">
+          <div class="character-section-heading">
+            <label>스킬 목록</label>
+            <div class="character-section-actions">
+              <label class="checkbox-label"><input type="checkbox" id="edit_defaultSkills" onchange="toggleCharacterDefaultSkills('edit')"><span>기본 세트 생성</span></label>
+              <button type="button" class="btn btn-secondary btn-sm" id="edit_addDefaultSkills" onclick="addCharacterDefaultSkills('edit')" disabled>스킬 추가</button>
+            </div>
+          </div>
+          <div class="character-entry-list" id="edit_skillsList"></div>
+        </div>
+        <div class="form-group character-detail-group">
+          <div class="character-section-heading">
+            <label>서포트 스킬</label>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addCharacterEntry('edit','supportSkills')">스킬 추가</button>
+          </div>
+          <div class="character-entry-list" id="edit_supportSkillsList"></div>
+        </div>
+        <div class="form-group character-detail-group">
+          <div class="character-section-heading">
+            <label>꿀팁</label>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addCharacterEntry('edit','tips')">꿀팁 추가</button>
+          </div>
+          <div class="character-entry-list" id="edit_tipsList"></div>
+        </div>
+        <div class="form-check"><input type="checkbox" id="edit_published" ${item.published !== false ? 'checked' : ''}><label>노출</label></div>
       `,
       getData: () => {
-        const name = $('#edit_name').value;
+        const name = $('#edit_name').value.trim();
         if (!name) { showToast('이름을 입력하세요.', 'warning'); return null; }
-        return { name, grade: $('#edit_grade').value, attribute: $('#edit_attribute').value, type: $('#edit_type').value, published: $('#edit_published').checked, imageFile: currentImageFile };
+        if (name.length > 20) { showToast('캐릭터 이름은 20자 이내로 입력하세요.', 'warning'); return null; }
+        return {
+          name,
+          grade: $('#edit_grade').value,
+          attr: $('#edit_attribute').value,
+          attribute: $('#edit_attribute').value,
+          type: $('#edit_type').value,
+          published: $('#edit_published').checked,
+          skills: collectCharacterEntries('edit', 'skills'),
+          supportSkills: collectCharacterEntries('edit', 'supportSkills'),
+          adminTipItems: collectCharacterEntries('edit', 'tips'),
+          imageFile: currentImageFile
+        };
       }
     },
     supportCharacters: {
