@@ -624,7 +624,9 @@ async function loadCollectionData(collection, columns) {
 async function hydrateCollectionData(collection, snapshot) {
   const rows = [];
   snapshot.forEach(doc => {
-    rows.push({ id: doc.id, ...doc.data() });
+    // Firestore document ID must remain the CRUD key. Some records also have
+    // an `id` field, which must not overwrite the actual document ID.
+    rows.push({ ...doc.data(), id: doc.id });
   });
 
   if (collection === 'banners'
@@ -1606,7 +1608,7 @@ async function loadMembers() {
   try {
     const snapshot = await db.collection('users').get();
     state.data = [];
-    snapshot.forEach(doc => state.data.push({ id: doc.id, ...doc.data() }));
+    snapshot.forEach(doc => state.data.push({ ...doc.data(), id: doc.id }));
     state.filteredData = [...state.data];
     renderMembersTable();
   } catch (err) {
@@ -1800,7 +1802,7 @@ async function loadPermissions() {
       if (existing) {
         Object.assign(existing, doc.data());
       } else {
-        adminData.push({ id: doc.id, email: doc.id, ...doc.data() });
+        adminData.push({ ...doc.data(), id: doc.id, email: doc.id });
       }
     });
     state.data = adminData;
@@ -1965,7 +1967,7 @@ async function loadSupport() {
     // Support tickets might be in a 'supportTickets' or similar collection
     const snapshot = await db.collection('supportTickets').get();
     state.data = [];
-    snapshot.forEach(doc => state.data.push({ id: doc.id, ...doc.data() }));
+    snapshot.forEach(doc => state.data.push({ ...doc.data(), id: doc.id }));
     state.filteredData = [...state.data];
     renderSupportTable();
   } catch (err) {
@@ -2146,7 +2148,7 @@ async function exportData() {
     try {
       const snapshot = await db.collection(col).get();
       backup[col] = [];
-      snapshot.forEach(doc => backup[col].push({ id: doc.id, ...doc.data() }));
+      snapshot.forEach(doc => backup[col].push({ ...doc.data(), id: doc.id }));
     } catch (e) { backup[col] = []; }
   }
   
