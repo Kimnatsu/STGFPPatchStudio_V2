@@ -2675,6 +2675,18 @@ select.form-control {
   box-shadow: 0 0 0 3px rgba(99,102,241,.1);
 }
 .original-modal-container .form-input::placeholder { color: var(--text-secondary); }
+.original-modal-container .id-readonly-field,
+.original-modal-container .id-readonly-field:focus,
+.original-modal-container .id-readonly-field:disabled {
+  color: var(--text-secondary);
+  background: var(--border-light);
+  border-color: var(--border);
+  opacity: .65;
+  cursor: not-allowed;
+  pointer-events: none;
+  user-select: none;
+  box-shadow: none;
+}
 .original-modal-container .form-hint,
 .original-modal-container .form-label-optional,
 .character-entry-author { color: var(--text-secondary); }

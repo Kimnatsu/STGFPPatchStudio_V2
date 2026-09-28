@@ -257,7 +257,7 @@
     const idValue = item ? displayId(item) : nextId;
     const idField = modalField(
       'ID',
-      `<input class="form-input" id="${scope}_recordId" value="${esc(idValue)}" readonly>`
+      `<input class="form-input id-readonly-field" id="${scope}_recordId" value="${esc(idValue)}" readonly disabled aria-readonly="true" tabindex="-1">`
     );
 
     if (collection === 'banners') {
