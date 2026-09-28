@@ -1190,6 +1190,10 @@ async function handleAddItem(collection) {
     <button class="btn btn-primary" onclick="submitAddItem('${collection}')">추가</button>
   `);
   
+  if (collection === 'banners') {
+    initializeBannerClickActionFields('add');
+  }
+
   // Setup image upload if needed
   if (config.hasImage) {
     setupImageUpload(collection);
@@ -1249,6 +1253,10 @@ async function editItem(collection, id) {
     <button class="btn btn-primary" onclick="submitEditItem('${collection}','${id}')">수정</button>
   `);
   
+  if (collection === 'banners') {
+    initializeBannerClickActionFields('edit', item);
+  }
+
   if (config.hasImage) {
     setupImageUpload(collection, getStoredImageUrl(collection, item));
   }
@@ -1348,6 +1356,11 @@ let currentImageUploadPromise = null;
 let currentImageUploadError = null;
 const IMAGE_EDITOR_COLLECTIONS = new Set(['banners', 'characters', 'supportCharacters']);
 const SQUARE_IMAGE_EDITOR_COLLECTIONS = new Set(['characters', 'supportCharacters']);
+const BANNER_IMAGE_EDITOR_OPTIONS = Object.freeze({
+  aspectRatio: 1472 / 420,
+  outputWidth: 1472,
+  outputHeight: 420
+});
 const IMAGE_FIELD_BY_COLLECTION = Object.freeze({
   characters: 'img',
   supportCharacters: 'img'
@@ -1357,12 +1370,26 @@ function getImageField(collection) {
   return IMAGE_FIELD_BY_COLLECTION[collection] || 'imageUrl';
 }
 
+function getAllowedImageTypes(collection) {
+  if (collection === 'banners') {
+    return ['image/jpeg', 'image/png', 'image/gif'];
+  }
+  return CLOUDINARY_CONFIG.allowedTypes;
+}
+
+function getMaxImageSize(collection) {
+  return collection === 'banners'
+    ? 3 * 1024 * 1024
+    : CLOUDINARY_CONFIG.maxSizeBytes;
+}
+
 function getStoredImageUrl(collection, item) {
   if (!item) return null;
   return item[getImageField(collection)] || item.imageUrl || item.img || null;
 }
 
 function getImageEditorOptions(collection) {
+  if (collection === 'banners') return BANNER_IMAGE_EDITOR_OPTIONS;
   if (!SQUARE_IMAGE_EDITOR_COLLECTIONS.has(collection)) return {};
   return {
     aspectRatio: 1,
@@ -1386,12 +1413,18 @@ function setupImageUpload(collection, existingUrl = null) {
     input.onchange = (e) => {
       const file = e.target.files[0];
       if (file) {
-        if (!CLOUDINARY_CONFIG.allowedTypes.includes(file.type)) {
-          showToast('지원하지 않는 파일 형식입니다. (허용: JPG, PNG, WEBP, GIF)', 'warning');
+        if (!getAllowedImageTypes(collection).includes(file.type)) {
+          showToast(
+            collection === 'banners'
+              ? '배너 이미지는 JPG, PNG, GIF만 등록할 수 있습니다.'
+              : '지원하지 않는 파일 형식입니다. (허용: JPG, PNG, WEBP, GIF)',
+            'warning'
+          );
           return;
         }
-        if (file.size > 10 * 1024 * 1024) {
-          showToast('이미지는 10MB 이하로 선택해 주세요.', 'warning');
+        const maxSize = getMaxImageSize(collection);
+        if (file.size > maxSize) {
+          showToast(`이미지는 ${maxSize / (1024 * 1024)}MB 이하로 선택해 주세요.`, 'warning');
           return;
         }
         const reader = new FileReader();
@@ -1468,12 +1501,13 @@ function beginImageUpload(collection, file) {
 }
 
 async function uploadImage(file, collection) {
-  if (!CLOUDINARY_CONFIG.allowedTypes.includes(file.type)) {
-    throw new Error('지원하지 않는 파일 형식입니다. (허용: JPG, PNG, WEBP, GIF)');
+  if (!getAllowedImageTypes(collection).includes(file.type)) {
+    throw new Error('지원하지 않는 파일 형식입니다. (배너: JPG, PNG, GIF)');
   }
 
-  if (file.size > CLOUDINARY_CONFIG.maxSizeBytes) {
-    throw new Error(`파일 크기가 너무 큽니다. (최대 ${CLOUDINARY_CONFIG.maxSizeBytes / (1024 * 1024)}MB)`);
+  const maxSize = getMaxImageSize(collection);
+  if (file.size > maxSize) {
+    throw new Error(`파일 크기가 너무 큽니다. (최대 ${maxSize / (1024 * 1024)}MB)`);
   }
 
   const formData = new FormData();
@@ -2299,25 +2333,192 @@ function getPageFilterConfig(collection) {
   return configs[collection] || null;
 }
 
+const BANNER_INTERNAL_TARGETS = Object.freeze([
+  { value: 'home', label: '메인 홈', href: 'https://kimnatsu.github.io/STGFPPatch_V2/ko/Main.html#home' },
+  { value: 'characters', label: '캐릭터', href: 'https://kimnatsu.github.io/STGFPPatch_V2/ko/Main.html#characters' },
+  { value: 'pvp', label: 'PvP 패치', href: 'https://kimnatsu.github.io/STGFPPatch_V2/ko/Main.html#pvp' },
+  { value: 'community', label: '커뮤니티 홈', href: 'https://kimnatsu.github.io/STGFPPatch_V2/ko/Community.html#home' },
+  { value: 'patch', label: '패치노트', href: 'https://kimnatsu.github.io/STGFPPatch_V2/ko/Community.html#patch' },
+  { value: 'board', label: '게시판', href: 'https://kimnatsu.github.io/STGFPPatch_V2/ko/Community.html#board' },
+  { value: 'event', label: '이벤트', href: 'https://kimnatsu.github.io/STGFPPatch_V2/ko/Community.html#event' },
+  { value: 'customerService', label: '고객센터', href: 'https://kimnatsu.github.io/STGFPPatch_V2/ko/CustomerService.html#home' }
+]);
+
+function escapeFormValue(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function getBannerClickActionFormHtml(scope) {
+  return `
+    <div class="form-group">
+      <label>배너 클릭 동작</label>
+      <div class="radio-group banner-action-options">
+        <label class="radio-label">
+          <input type="radio" name="${scope}_clickAction" value="none" checked onchange="updateBannerClickActionFields('${scope}')">
+          <span>없음</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="${scope}_clickAction" value="external" onchange="updateBannerClickActionFields('${scope}')">
+          <span>외부 링크 열기</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="${scope}_clickAction" value="internal" onchange="updateBannerClickActionFields('${scope}')">
+          <span>내부 탭 이동</span>
+        </label>
+      </div>
+      <div class="banner-click-fields" id="${scope}_bannerClickFields"></div>
+    </div>
+  `;
+}
+
+function getBannerClickActionState(item = {}) {
+  const link = item.link || '';
+  const internalTarget = BANNER_INTERNAL_TARGETS.find(target => (
+    target.href === link || target.value === item.internalTab || target.value === item.targetTab
+  ));
+  let action = item.clickAction || item.actionType || '';
+  if (!action) action = internalTarget ? 'internal' : (link ? 'external' : 'none');
+  if (!['none', 'external', 'internal'].includes(action)) action = 'none';
+
+  return {
+    action,
+    link,
+    internalTab: item.internalTab || item.targetTab || internalTarget?.value || 'home'
+  };
+}
+
+function updateBannerClickActionFields(scope, initialState = {}) {
+  const container = $(`#${scope}_bannerClickFields`);
+  if (!container) return;
+
+  const action = document.querySelector(`input[name="${scope}_clickAction"]:checked`)?.value || 'none';
+  const existingExternalUrl = $(`#${scope}_externalUrl`)?.value || '';
+  const existingInternalTab = $(`#${scope}_internalTab`)?.value || 'home';
+
+  if (action === 'external') {
+    const value = initialState.link ?? existingExternalUrl;
+    container.innerHTML = `
+      <input type="url" class="form-control" id="${scope}_externalUrl"
+        value="${escapeFormValue(value)}" placeholder="https://example.com">
+    `;
+    return;
+  }
+
+  if (action === 'internal') {
+    const selectedTab = initialState.internalTab || existingInternalTab;
+    container.innerHTML = `
+      <select class="form-control" id="${scope}_internalTab">
+        ${BANNER_INTERNAL_TARGETS.map(target => `
+          <option value="${target.value}" ${target.value === selectedTab ? 'selected' : ''}>${target.label}</option>
+        `).join('')}
+      </select>
+    `;
+    return;
+  }
+
+  container.innerHTML = '';
+}
+
+function initializeBannerClickActionFields(scope, item = null) {
+  const state = getBannerClickActionState(item || {});
+  const radio = document.querySelector(`input[name="${scope}_clickAction"][value="${state.action}"]`);
+  if (radio) radio.checked = true;
+  updateBannerClickActionFields(scope, state);
+}
+
+function getBannerClickActionData(scope) {
+  const action = document.querySelector(`input[name="${scope}_clickAction"]:checked`)?.value || 'none';
+  if (action === 'external') {
+    const link = $(`#${scope}_externalUrl`)?.value.trim() || '';
+    if (!/^https?:\/\//i.test(link)) {
+      showToast('외부 링크는 http:// 또는 https://로 시작해야 합니다.', 'warning');
+      return null;
+    }
+    return { clickAction: 'external', link, internalTab: null };
+  }
+
+  if (action === 'internal') {
+    const internalTab = $(`#${scope}_internalTab`)?.value || 'home';
+    const target = BANNER_INTERNAL_TARGETS.find(item => item.value === internalTab);
+    return {
+      clickAction: 'internal',
+      link: target?.href || BANNER_INTERNAL_TARGETS[0].href,
+      internalTab
+    };
+  }
+
+  return { clickAction: 'none', link: null, internalTab: null };
+}
+
 function getAddFormConfig(collection) {
   const configs = {
     banners: {
       title: '배너 추가',
       hasImage: true,
       formHtml: `
-        <div class="form-group"><label>제목</label><input type="text" class="form-control" id="add_title" placeholder="배너 제목"></div>
-        <div class="form-group"><label>이미지</label><div class="image-upload" id="imageUpload_banners"><i class="fas fa-cloud-upload-alt"></i><p>클릭하여 이미지 업로드</p></div></div>
-        <div class="form-group"><label>링크 URL</label><input type="text" class="form-control" id="add_link" placeholder="배너 클릭 시 이동할 URL"></div>
-        <div class="form-check"><input type="checkbox" id="add_active" checked><label>활성화</label></div>
-        <div class="form-check mt-2"><input type="checkbox" id="add_published" checked><label>노출</label></div>
+        <div class="form-group">
+          <label for="add_id">ID</label>
+          <input type="text" class="form-control" id="add_id" value="저장 시 자동 지정" disabled>
+        </div>
+        <div class="form-group">
+          <label for="add_title">제목 <span class="form-label-hint">(최대 50자)</span></label>
+          <input type="text" class="form-control" id="add_title" maxlength="50" placeholder="배너 제목">
+        </div>
+        <div class="form-group">
+          <label>이미지 등록 <span class="required-mark">*</span></label>
+          <div class="banner-image-upload-row">
+            <div class="image-upload banner-image-upload" id="imageUpload_banners" aria-label="배너 이미지 업로드">
+              <i class="fas fa-plus"></i>
+            </div>
+            <div class="banner-image-upload-info">
+              <ul>
+                <li>이미지 사이즈 : 1472×420 px (자동 리사이즈)</li>
+                <li>최대 용량 : 3 MB</li>
+                <li>확장자 : jpg, png, gif</li>
+              </ul>
+              <button type="button" class="btn btn-primary banner-upload-button" onclick="document.getElementById('imageUpload_banners').click()">
+                업로드 <i class="fas fa-upload"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>활성화 상태</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="add_active" value="false" checked><span>OFF</span></label>
+            <label class="radio-label"><input type="radio" name="add_active" value="true"><span>ON</span></label>
+          </div>
+        </div>
+        ${getBannerClickActionFormHtml('add')}
       `,
-      getData: () => ({
-        title: $('#add_title').value || null,
-        link: $('#add_link').value || null,
-        isActive: $('#add_active').checked,
-        visible: $('#add_published').checked,
-        imageFile: currentImageFile
-      })
+      getData: () => {
+        const title = $('#add_title').value.trim();
+        if (!title) {
+          showToast('제목을 입력하세요.', 'warning');
+          return null;
+        }
+        if (title.length > 50) {
+          showToast('제목은 50자 이내로 입력하세요.', 'warning');
+          return null;
+        }
+        if (!currentImageUrl && !currentImageUploadPromise) {
+          showToast('배너 이미지를 등록하고 편집 결과를 적용하세요.', 'warning');
+          return null;
+        }
+        const clickAction = getBannerClickActionData('add');
+        if (!clickAction) return null;
+        return {
+          title,
+          ...clickAction,
+          isActive: $('input[name="add_active"]:checked')?.value === 'true',
+          visible: true,
+          imageFile: currentImageFile
+        };
+      }
     },
     characters: {
       title: '캐릭터 추가',
@@ -2438,19 +2639,62 @@ function getEditFormConfig(collection, item) {
       title: '배너 수정',
       hasImage: true,
       formHtml: `
-        <div class="form-group"><label>제목</label><input type="text" class="form-control" id="edit_title" value="${item.title || ''}"></div>
-        <div class="form-group"><label>이미지</label><div class="image-upload" id="imageUpload_banners">${item.imageUrl ? `<img src="${item.imageUrl}" class="image-preview">` : '<i class="fas fa-cloud-upload-alt"></i><p>클릭하여 이미지 업로드</p>'}</div></div>
-        <div class="form-group"><label>링크 URL</label><input type="text" class="form-control" id="edit_link" value="${item.link || ''}"></div>
-        <div class="form-check"><input type="checkbox" id="edit_active" ${item.isActive ? 'checked' : ''}><label>활성화</label></div>
-        <div class="form-check mt-2"><input type="checkbox" id="edit_published" ${item.visible !== false ? 'checked' : ''}><label>노출</label></div>
+        <div class="form-group">
+          <label for="edit_id">ID</label>
+          <input type="text" class="form-control" id="edit_id" value="${escapeFormValue(item.id)}" disabled>
+        </div>
+        <div class="form-group">
+          <label for="edit_title">제목 <span class="form-label-hint">(최대 50자)</span></label>
+          <input type="text" class="form-control" id="edit_title" maxlength="50" value="${escapeFormValue(item.title || '')}">
+        </div>
+        <div class="form-group">
+          <label>이미지 등록 <span class="required-mark">*</span></label>
+          <div class="banner-image-upload-row">
+            <div class="image-upload banner-image-upload ${getStoredImageUrl('banners', item) ? 'has-image' : ''}" id="imageUpload_banners" aria-label="배너 이미지 업로드">
+              ${getStoredImageUrl('banners', item)
+                ? `<img src="${escapeFormValue(getStoredImageUrl('banners', item))}" class="image-preview" alt="">`
+                : '<i class="fas fa-plus"></i>'}
+            </div>
+            <div class="banner-image-upload-info">
+              <ul>
+                <li>이미지 사이즈 : 1472×420 px (자동 리사이즈)</li>
+                <li>최대 용량 : 3 MB</li>
+                <li>확장자 : jpg, png, gif</li>
+              </ul>
+              <button type="button" class="btn btn-primary banner-upload-button" onclick="document.getElementById('imageUpload_banners').click()">
+                업로드 <i class="fas fa-upload"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>활성화 상태</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="edit_active" value="false" ${item.isActive ? '' : 'checked'}><span>OFF</span></label>
+            <label class="radio-label"><input type="radio" name="edit_active" value="true" ${item.isActive ? 'checked' : ''}><span>ON</span></label>
+          </div>
+        </div>
+        ${getBannerClickActionFormHtml('edit')}
       `,
-      getData: () => ({
-        title: $('#edit_title').value || null,
-        link: $('#edit_link').value || null,
-        isActive: $('#edit_active').checked,
-        visible: $('#edit_published').checked,
-        imageFile: currentImageFile
-      })
+      getData: () => {
+        const title = $('#edit_title').value.trim();
+        if (!title) {
+          showToast('제목을 입력하세요.', 'warning');
+          return null;
+        }
+        if (title.length > 50) {
+          showToast('제목은 50자 이내로 입력하세요.', 'warning');
+          return null;
+        }
+        const clickAction = getBannerClickActionData('edit');
+        if (!clickAction) return null;
+        return {
+          title,
+          ...clickAction,
+          isActive: $('input[name="edit_active"]:checked')?.value === 'true',
+          imageFile: currentImageFile
+        };
+      }
     },
     characters: {
       title: '캐릭터 수정',

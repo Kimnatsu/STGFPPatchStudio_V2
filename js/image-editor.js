@@ -76,12 +76,13 @@
 
   function resetCropSelection() {
     if (state.aspectRatio) {
-      const size = Math.min(state.canvas.width, state.canvas.height);
+      const width = Math.min(state.canvas.width, state.canvas.height * state.aspectRatio);
+      const height = width / state.aspectRatio;
       state.crop = {
-        x: (state.canvas.width - size) / 2,
-        y: (state.canvas.height - size) / 2,
-        width: size,
-        height: size
+        x: (state.canvas.width - width) / 2,
+        y: (state.canvas.height - height) / 2,
+        width,
+        height
       };
       return;
     }
@@ -97,17 +98,23 @@
   function clampCrop(crop) {
     const width = state.canvas.width;
     const height = state.canvas.height;
-    const minSize = Math.min(32, width, height);
     if (state.aspectRatio) {
       const maxWidth = Math.min(width, height * state.aspectRatio);
       const maxHeight = Math.min(height, width / state.aspectRatio);
-      const cropWidth = Math.max(minSize, Math.min(crop.width, maxWidth));
-      const cropHeight = cropWidth / state.aspectRatio;
+      const minWidth = Math.min(maxWidth, Math.max(32, 32 * state.aspectRatio));
+      let cropWidth = Math.max(minWidth, Math.min(crop.width, maxWidth));
+      let cropHeight = cropWidth / state.aspectRatio;
+      if (cropHeight > maxHeight) {
+        cropHeight = maxHeight;
+        cropWidth = cropHeight * state.aspectRatio;
+      }
       crop.width = cropWidth;
       crop.height = cropHeight;
+    } else {
+      const minSize = Math.min(32, width, height);
+      crop.width = Math.max(minSize, Math.min(crop.width, width));
+      crop.height = Math.max(minSize, Math.min(crop.height, height));
     }
-    crop.width = Math.max(minSize, Math.min(crop.width, width));
-    crop.height = Math.max(minSize, Math.min(crop.height, height));
     crop.x = Math.max(0, Math.min(crop.x, width - crop.width));
     crop.y = Math.max(0, Math.min(crop.y, height - crop.height));
     return crop;
@@ -154,17 +161,21 @@
     if (state.aspectRatio) {
       const directionX = point.x < start.x ? -1 : 1;
       const directionY = point.y < start.y ? -1 : 1;
-      const requestedSize = Math.max(Math.abs(point.x - start.x), Math.abs(point.y - start.y));
-      const maxSize = Math.min(
-        directionX > 0 ? state.canvas.width - start.x : start.x,
-        directionY > 0 ? state.canvas.height - start.y : start.y
+      const requestedWidth = Math.max(
+        Math.abs(point.x - start.x),
+        Math.abs(point.y - start.y) * state.aspectRatio
       );
-      const size = Math.min(requestedSize, maxSize);
+      const maxWidth = Math.min(
+        directionX > 0 ? state.canvas.width - start.x : start.x,
+        (directionY > 0 ? state.canvas.height - start.y : start.y) * state.aspectRatio
+      );
+      const cropWidth = Math.min(requestedWidth, maxWidth);
+      const cropHeight = cropWidth / state.aspectRatio;
       state.crop = {
-        x: directionX > 0 ? start.x : start.x - size,
-        y: directionY > 0 ? start.y : start.y - size,
-        width: size,
-        height: size
+        x: directionX > 0 ? start.x : start.x - cropWidth,
+        y: directionY > 0 ? start.y : start.y - cropHeight,
+        width: cropWidth,
+        height: cropHeight
       };
       updateCropBox();
       return;
