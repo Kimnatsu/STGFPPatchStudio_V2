@@ -1492,6 +1492,7 @@ function setupImageUpload(collection, existingUrl = null) {
     renderImageUploadPreview(collection, currentImagePreviewUrl);
   } else {
     updateImageUploadButton(collection, false);
+    updateImageUploadCaption(collection, false);
   }
 
   uploadArea.addEventListener('click', () => {
@@ -1552,14 +1553,27 @@ function updateImageUploadButton(collection, hasImage) {
   button.setAttribute('aria-label', hasImage ? '이미지 편집' : '이미지 업로드');
 }
 
+function updateImageUploadCaption(collection, hasImage) {
+  const uploadArea = $(`#imageUpload_${collection}`);
+  const column = uploadArea?.closest('.image-upload-preview-column');
+  if (!uploadArea || !column) return;
+
+  const caption = column.querySelector('.image-upload-caption');
+  if (hasImage && !caption) {
+    uploadArea.insertAdjacentHTML('afterend', '<div class="image-upload-caption">클릭하여 이미지 변경</div>');
+  } else if (!hasImage) {
+    caption?.remove();
+  }
+}
+
 function renderImageUploadPreview(collection, imageUrl) {
   const uploadArea = $(`#imageUpload_${collection}`);
   if (!uploadArea) return;
   uploadArea.classList.add('has-image');
   updateImageUploadButton(collection, true);
+  updateImageUploadCaption(collection, true);
   uploadArea.innerHTML = `
     <img src="${imageUrl}" class="image-preview" alt="선택한 이미지">
-    <div class="image-upload-caption">클릭하여 이미지 변경</div>
   `;
 }
 

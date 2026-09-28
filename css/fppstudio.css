@@ -1512,9 +1512,11 @@ select.form-control {
 }
 
 .image-upload-caption {
-  margin-top: 8px;
+  margin-top: 6px;
   color: var(--text-secondary);
   font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
 }
 
 /* ===== Image Editor ===== */
@@ -2500,6 +2502,12 @@ select.form-control {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+.image-upload-preview-column {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: stretch;
 }
 .original-image-upload .image-upload {
   display: flex;

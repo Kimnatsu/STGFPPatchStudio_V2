@@ -91,6 +91,7 @@
     const imageUrl = getStoredImageUrl(collection, item) || '';
     const isBanner = collection === 'banners';
     const isEvent = collection === 'events';
+    const hasImage = Boolean(imageUrl);
     const sizeHints = isBanner
       ? ['이미지 사이즈 : 1472×420 px', '최대 용량 : 3 MB', '확장자 : jpg, png, gif']
       : isEvent
@@ -100,8 +101,11 @@
       <div class="form-group original-image-group">
         <label class="form-label">이미지 ${required ? '<span class="required">*</span>' : '<span class="form-label-optional">(선택)</span>'}</label>
         <div class="original-image-upload">
-          <div class="image-upload ${isBanner ? 'banner-image-upload' : ''} ${imageUrl ? 'has-image' : ''}" id="imageUpload_${collection}" aria-label="이미지 업로드">
-            ${imageUrl ? `<img src="${esc(imageUrl)}" class="image-preview" alt="">` : '<i class="fas fa-plus"></i>'}
+          <div class="image-upload-preview-column">
+            <div class="image-upload ${isBanner ? 'banner-image-upload' : ''} ${imageUrl ? 'has-image' : ''}" id="imageUpload_${collection}" aria-label="이미지 업로드">
+              ${imageUrl ? `<img src="${esc(imageUrl)}" class="image-preview" alt="">` : '<i class="fas fa-plus"></i>'}
+            </div>
+            ${imageUrl ? '<div class="image-upload-caption">클릭하여 이미지 변경</div>' : ''}
           </div>
           <div class="original-image-info">
             <ul class="image-guide-list">
@@ -109,8 +113,8 @@
             </ul>
             ${hint ? `<p>${esc(hint)}</p>` : ''}
           </div>
-          <button type="button" class="btn btn-primary btn-sm image-upload-button" onclick="document.getElementById('imageUpload_${collection}').click()">
-            <i class="fas fa-upload"></i> 업로드
+          <button type="button" class="btn btn-primary btn-sm image-upload-button" data-image-action-button="${collection}" onclick="handleImageButtonClick('${collection}')">
+            <i class="fas fa-${hasImage ? 'edit' : 'upload'}"></i> ${hasImage ? '이미지 편집' : '업로드'}
           </button>
         </div>
       </div>
