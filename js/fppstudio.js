@@ -1488,7 +1488,11 @@ function setupImageUpload(collection, existingUrl = null) {
 
   currentImagePreviewUrl = existingUrl || currentImagePreviewUrl || null;
   currentImageUrl = existingUrl || currentImageUrl || null;
-  if (currentImagePreviewUrl) renderImageUploadPreview(collection, currentImagePreviewUrl);
+  if (currentImagePreviewUrl) {
+    renderImageUploadPreview(collection, currentImagePreviewUrl);
+  } else {
+    updateImageUploadButton(collection, false);
+  }
 
   uploadArea.addEventListener('click', () => {
     const input = document.createElement('input');
@@ -1529,18 +1533,33 @@ function setupImageUpload(collection, existingUrl = null) {
   });
 }
 
+function handleImageButtonClick(collection) {
+  const uploadArea = $(`#imageUpload_${collection}`);
+  if (!uploadArea) return;
+
+  if (uploadArea.classList.contains('has-image') && IMAGE_EDITOR_COLLECTIONS.has(collection)) {
+    openImageEditorForUpload(collection);
+    return;
+  }
+
+  uploadArea.click();
+}
+
+function updateImageUploadButton(collection, hasImage) {
+  const button = document.querySelector(`[data-image-action-button="${collection}"]`);
+  if (!button) return;
+  button.innerHTML = `<i class="fas fa-${hasImage ? 'edit' : 'upload'}"></i> ${hasImage ? '이미지 편집' : '업로드'}`;
+  button.setAttribute('aria-label', hasImage ? '이미지 편집' : '이미지 업로드');
+}
+
 function renderImageUploadPreview(collection, imageUrl) {
   const uploadArea = $(`#imageUpload_${collection}`);
   if (!uploadArea) return;
   uploadArea.classList.add('has-image');
+  updateImageUploadButton(collection, true);
   uploadArea.innerHTML = `
     <img src="${imageUrl}" class="image-preview" alt="선택한 이미지">
     <div class="image-upload-caption">클릭하여 이미지 변경</div>
-    ${IMAGE_EDITOR_COLLECTIONS.has(collection) ? `
-      <button type="button" class="image-upload-edit" onclick="event.stopPropagation(); openImageEditorForUpload('${collection}')">
-        <i class="fas fa-sliders-h"></i> 이미지 편집
-      </button>
-    ` : ''}
   `;
 }
 

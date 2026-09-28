@@ -1517,25 +1517,6 @@ select.form-control {
   font-size: 12px;
 }
 
-.image-upload-edit {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  color: var(--primary);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.image-upload-edit:hover {
-  border-color: var(--primary);
-  background: var(--primary-light);
-}
-
 /* ===== Image Editor ===== */
 .image-editor-overlay {
   position: fixed;
