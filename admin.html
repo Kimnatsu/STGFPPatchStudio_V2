@@ -1,0 +1,2230 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://apis.google.com https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://api.cloudinary.com; frame-src https://fighting-path-patch.firebaseapp.com; object-src 'none';">
+  <title>Fighting Path Patch Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Firebase 도메인 DNS prefetch: SDK 다운로드 지연 완화 -->
+  <link rel="dns-prefetch" href="https://www.gstatic.com" />
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+  <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+  <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
+  <!-- Google Fonts: 비차단 preload로 렌더 블로킹 제거 -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;900&display=swap" rel="stylesheet" /></noscript>
+  <link rel="icon" type="image/png" href="img/logo.png" />
+  <link rel="stylesheet" href="admincss/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css"
+        integrity="sha384-6LFfkTKLRlzFtgx8xsWyBdKGpcMMQTkv+dB7rAbugeJAu1Ym2q1Aji1cjHBG12Xh" crossorigin="anonymous">
+    <!-- Summernote -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-lite.min.css"
+          integrity="sha384-ujmZ40iFsxEHUq6QCcxwjfGi1W9lk9SkvB4Kz6ZCDGh5G1LF41x7qOfDJnBo82CS" crossorigin="anonymous" />
+</head>
+<body>
+
+<!-- ===== LOGIN OVERLAY ===== -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="gnb-logo-icon">
+        <img src="img/logo-dark.png" alt="Logo" class="logo-img" />
+      </div>
+      <span class="login-site-name">Fighting Path Patch</span>
+      <span class="admin-badge">Admin</span>
+    </div>
+    <h2 class="login-title">관리자 로그인</h2>
+    <p class="login-desc">허가된 관리자 Google 계정으로만 접근할 수 있습니다.</p>
+    <button class="btn-google-signin" id="btnGoogleSignin">
+      <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Google로 로그인
+    </button>
+    <label class="login-remember-label" style="margin-top:14px">
+      <input type="checkbox" id="loginRememberMe">
+      <span>로그인 상태 유지</span>
+    </label>
+    <div class="login-error" id="loginError" style="display:none"></div>
+  </div>
+</div>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ===== SIDEBAR + CONTENT ===== -->
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="sidebar-header">
+      <a href="https://kimnatsu.github.io/STGFPPatch_V2/ko/Main.html" target="_blank" rel="noopener noreferrer" class="gnb-logo sidebar-logo-link" title="사용자 페이지로 이동" style="text-decoration:none;color:inherit;cursor:pointer;">
+        <div class="gnb-logo-icon">
+          <img src="img/logo-dark.png" alt="Logo" class="logo-img" />
+        </div>
+        <span class="gnb-title">Fighting Path Patch</span>
+        <span class="admin-badge">Admin</span>
+      </a>
+    </div>
+    <div class="sidebar-scroll">
+    <nav class="sidebar-nav">
+      <button class="sidebar-section-item" type="button" aria-expanded="true">운영 <svg class="sidebar-section-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>
+      <button class="sidebar-item" data-section="members" id="sidebarMembersBtn" style="display:none">
+        멤버 관리
+      </button>
+      <button class="sidebar-item" data-section="permissions" id="sidebarPermissionsBtn" style="display:none">
+        권한 관리
+      </button>
+      <button class="sidebar-section-item" type="button" aria-expanded="false">페이지 <svg class="sidebar-section-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>
+      <button class="sidebar-item" data-section="banners">
+        메인 배너 관리
+      </button>
+      <button class="sidebar-item" data-section="characters">
+        캐릭터 관리
+      </button>
+      <button class="sidebar-item" data-section="supportchars">
+        현질 캐릭터 관리
+      </button>
+      <button class="sidebar-item" data-section="pvppatch">
+        PvP 패치 관리
+      </button>
+      <button class="sidebar-item" data-section="patchnote">
+        패치노트 관리
+      </button>
+      <button class="sidebar-item" data-section="boards">
+        게시판 관리
+      </button>
+      <button class="sidebar-item" data-section="events">
+        이벤트 관리
+      </button>
+      <button class="sidebar-section-item" type="button" aria-expanded="false">서비스 <svg class="sidebar-section-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>
+      <button class="sidebar-item" data-section="notices">
+        공지사항 관리
+      </button>
+      <button class="sidebar-item" data-section="support">
+        고객센터 관리
+      </button>
+      <button class="sidebar-section-item" type="button" aria-expanded="false">시스템 <svg class="sidebar-section-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>
+      <button class="sidebar-item" data-section="backup">
+        백업 / 복원
+      </button>
+      <div class="sidebar-group sidebar-shortcut-group open">
+        <div class="sidebar-section-item sidebar-shortcut-item">바로가기</div>
+        <div class="sidebar-section-list">
+          <a class="sidebar-item" data-section="userpage" data-external="true" href="https://kimnatsu.github.io/STGFPPatch_V2/ko/Main.html" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+            사용자 페이지
+          </a>
+        </div>
+      </div>
+    </nav>
+    </div>
+    <div class="admin-auth-area sidebar-profile" id="adminAuthArea">
+      <div class="sidebar-profile-row">
+        <div class="admin-profile-btn" id="adminProfileBtn" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
+          <span class="sidebar-profile-avatar">
+            <img class="admin-user-avatar" id="adminUserAvatar" src="" alt="">
+            <span class="sidebar-profile-avatar-fallback" id="sidebarProfileAvatarFallback" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            </span>
+          </span>
+          <span class="admin-user-name" id="adminUserName">—</span>
+        </div>
+        <button class="sidebar-profile-settings" id="sidebarProfileSettings" type="button" aria-label="내 프로필 설정">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 001.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </button>
+      </div>
+      <div class="admin-profile-dropdown" id="adminProfileDropdown">
+        <button class="profile-dropdown-item" id="btnMyProfile">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7-7h14a7 7 0 00-7-7z"/></svg>
+          내 프로필
+        </button>
+        <div class="profile-dropdown-divider"></div>
+        <button class="profile-dropdown-item profile-dropdown-item-danger" id="btnSignout">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          로그아웃
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+
+    <!-- ===== ADMIN GNB ===== -->
+    <nav class="admin-gnb">
+      <!-- 모바일 햄버거 버튼 (≤600px에서만 표시) -->
+      <button class="hamburger-btn" id="hamburgerBtn" aria-label="메뉴 열기" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <!-- 섹션 히스토리 네비게이션 (좌측 고정) -->
+      <div class="gnb-nav-controls">
+        <button class="gnb-nav-btn" id="gnbNavBack" title="이전" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <button class="gnb-nav-btn" id="gnbNavForward" title="다음" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+        <button class="gnb-nav-btn" id="gnbNavClose" title="탭 닫기">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 멀티탭 영역 -->
+      <div class="gnb-tabs" id="gnbTabs"></div>
+
+      <!-- 프로필은 좌측 사이드바 하단에 고정 -->
+      <div class="legacy-admin-profile" aria-hidden="true">
+        <div class="admin-profile-btn" id="legacyAdminProfileBtn">
+          <img class="admin-user-avatar" id="legacyAdminUserAvatar" src="" alt="">
+          <span class="admin-user-name" id="legacyAdminUserName"></span>
+          <svg class="profile-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+        <div class="admin-profile-dropdown" id="legacyAdminProfileDropdown">
+          <button class="profile-dropdown-item" id="legacyBtnMyProfile">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+            내 정보
+          </button>
+          <div class="profile-dropdown-divider"></div>
+          <button class="profile-dropdown-item profile-dropdown-item-danger" id="legacyBtnSignout">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+            로그아웃
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ===== DASHBOARD SECTION ===== -->
+    <section class="admin-section active" id="section-dashboard">
+
+      <!-- 상단 정보 행 -->
+      <div class="dashboard-info-row">
+        <div class="dashboard-admin-card">
+          <div class="dash-welcome" id="dashWelcome">안녕하세요, <span class="dash-welcome-name" id="dashNickname">—</span> 님, 반갑습니다.</div>
+          <hr class="dash-divider">
+          <div class="dash-last-login" id="dashLastLogin">마지막 로그인은 — 입니다.</div>
+        </div>
+        <div class="dashboard-collection-map">
+          <div class="dashboard-admin-label">Firestore 컬렉션 구조</div>
+          <div class="collection-map-list">
+            <div class="collection-map-item"><span class="col-name">characters</span><span class="col-fields">id, name, type, attr, img, grade, skills[], supportSkills[], recentPatches[], tips[], visible, hasDraft, updatedBy, createdAt, updatedAt</span></div>
+            <div class="collection-map-item"><span class="col-name">supportCharacters</span><span class="col-fields">id, name, grade, img, visible, hasDraft, updatedBy, createdAt, updatedAt</span></div>
+            <div class="collection-map-item"><span class="col-name">pvpPatch</span><span class="col-fields">charId, type, patches[], visible, hasDraft, updatedBy, createdAt, updatedAt</span></div>
+            <div class="collection-map-item"><span class="col-name">patchNotes</span><span class="col-fields">date, title, excerpt, content, visible, hasDraft, updatedBy, createdAt, updatedAt</span></div>
+            <div class="collection-map-item"><span class="col-name">banners</span><span class="col-fields">imageUrl, title, link, order, isActive, visible, hasDraft, updatedBy, createdAt, updatedAt</span></div>
+            <div class="collection-map-item"><span class="col-name">notices</span><span class="col-fields">title, excerpt, content, pinned, visible, updatedBy, createdAt, updatedAt</span></div>
+            <div class="collection-map-item"><span class="col-name">users</span><span class="col-fields">nickname, profileImage</span></div>
+            <div class="collection-map-item"><span class="col-name">adminMeta</span><span class="col-fields">nicknames (doc)</span></div>
+            <div class="collection-map-item"><span class="col-name">publishMeta</span><span class="col-fields">characters, supportCharacters, pvpPatch, patchNotes, banners (docs)</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 대시보드 타이틀 + 새로고침 -->
+      <div class="dashboard-title-row">
+        <h2 class="section-title">대시보드</h2>
+        <button class="btn-secondary" id="btnRefreshDashboard">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:15px;height:15px">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          새로고침
+        </button>
+      </div>
+
+      <!-- 관리 메뉴 카드 (메인 배너 → 캐릭터 → 현질 캐릭터 → PvP 패치 → 패치노트 → 게시판 → 이벤트 → 공지사항 → 고객센터) -->
+      <div class="dashboard-stat-grid">
+        <div class="stat-card">
+          <div class="stat-card-icon stat-icon-banner">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-label">메인 배너 관리</div>
+            <div class="stat-card-value" id="statBannerCount"><div class="stat-spinner"></div></div>
+            <div class="stat-card-sub" id="statBannerSub">—</div>
+          </div>
+          <button class="stat-card-goto" onclick="switchSection('banners')">관리 →</button>
+        </div>
+
+<div class="stat-card">
+          <div class="stat-card-icon stat-icon-char">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-label">캐릭터 관리</div>
+            <div class="stat-card-value" id="statCharCount"><div class="stat-spinner"></div></div>
+            <div class="stat-card-sub" id="statCharSub">—</div>
+          </div>
+          <button class="stat-card-goto" onclick="switchSection('characters')">관리 →</button>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-icon stat-icon-char">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-label">현질 캐릭터 관리</div>
+            <div class="stat-card-value" id="statScCount"><div class="stat-spinner"></div></div>
+            <div class="stat-card-sub" id="statScSub">—</div>
+          </div>
+          <button class="stat-card-goto" onclick="switchSection('supportchars')">관리 →</button>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-icon stat-icon-pvp">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-label">PvP 패치 관리</div>
+            <div class="stat-card-value" id="statPvpCount"><div class="stat-spinner"></div></div>
+            <div class="stat-card-sub" id="statPvpSub">—</div>
+          </div>
+          <button class="stat-card-goto" onclick="switchSection('pvppatch')">관리 →</button>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-icon stat-icon-patch">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-label">패치노트 관리</div>
+            <div class="stat-card-value" id="statPatchCount"><div class="stat-spinner"></div></div>
+            <div class="stat-card-sub" id="statPatchSub">—</div>
+          </div>
+          <button class="stat-card-goto" onclick="switchSection('patchnote')">관리 →</button>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-icon stat-icon-patch">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h5m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-label">게시판 관리</div>
+            <div class="stat-card-value">—</div>
+            <div class="stat-card-sub">관리 화면</div>
+          </div>
+          <button class="stat-card-goto" onclick="switchSection('boards')">관리 →</button>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-icon stat-icon-char">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 10h16M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"/></svg>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-label">이벤트 관리</div>
+            <div class="stat-card-value" id="statEventCount"><div class="stat-spinner"></div></div>
+            <div class="stat-card-sub" id="statEventSub">—</div>
+          </div>
+          <button class="stat-card-goto" onclick="switchSection('events')">관리 →</button>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-icon stat-icon-banner">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-label">공지사항 관리</div>
+            <div class="stat-card-value" id="statNoticeCount"><div class="stat-spinner"></div></div>
+            <div class="stat-card-sub" id="statNoticeSub">—</div>
+          </div>
+          <button class="stat-card-goto" onclick="switchSection('notices')">관리 →</button>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-icon stat-icon-pvp">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8a6 6 0 00-12 0v4a6 6 0 0012 0V8zM4 12H2m20 0h-2M7 20h10M9 16h6"/></svg>
+          </div>
+          <div class="stat-card-body">
+            <div class="stat-card-label">고객센터 관리</div>
+            <div class="stat-card-value">—</div>
+            <div class="stat-card-sub">관리 화면</div>
+          </div>
+          <button class="stat-card-goto" onclick="switchSection('support')">관리 →</button>
+        </div>
+      </div>
+
+      <!-- 사용자 홈페이지 바로가기 -->
+      <div class="dash-homepage-card">
+        <div class="dash-homepage-logo">
+          <img src="img/logo-dark.png" alt="Logo" class="logo-img" />
+        </div>
+        <div class="dash-homepage-info">
+          <div class="dash-homepage-title">Fighting Path Patch</div>
+          <div class="dash-homepage-desc">사용자 홈페이지에서 패치노트, PvP 밸런스, 캐릭터 정보를 확인할 수 있습니다.</div>
+        </div>
+        <a href="https://kimnatsu.github.io/STGFPPatch_V2/ko/Main.html" target="_blank" rel="noopener noreferrer" class="dash-homepage-btn">
+          홈페이지 바로가기
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+          </svg>
+        </a>
+      </div>
+
+      <!-- 모바일 전용: Firebase 컬렉션 맵 (홈페이지 카드 아래) -->
+      <div class="dashboard-collection-map dashboard-collection-map--mobile">
+        <div class="dashboard-admin-label">Firestore 컬렉션 구조</div>
+        <div class="collection-map-list">
+          <div class="collection-map-item"><span class="col-name">characters</span><span class="col-fields">id, name, type, attr, img, grade, skills[], supportSkills[], recentPatches[], tips[], visible, hasDraft, updatedBy, createdAt, updatedAt</span></div>
+          <div class="collection-map-item"><span class="col-name">supportCharacters</span><span class="col-fields">id, name, grade, img, visible, hasDraft, updatedBy, createdAt, updatedAt</span></div>
+          <div class="collection-map-item"><span class="col-name">pvpPatch</span><span class="col-fields">charId, type, patches[], visible, hasDraft, updatedBy, createdAt, updatedAt</span></div>
+          <div class="collection-map-item"><span class="col-name">patchNotes</span><span class="col-fields">date, title, excerpt, content, visible, hasDraft, updatedBy, createdAt, updatedAt</span></div>
+          <div class="collection-map-item"><span class="col-name">banners</span><span class="col-fields">imageUrl, title, link, order, isActive, visible, hasDraft, updatedBy, createdAt, updatedAt</span></div>
+          <div class="collection-map-item"><span class="col-name">users</span><span class="col-fields">nickname, profileImage</span></div>
+          <div class="collection-map-item"><span class="col-name">adminMeta</span><span class="col-fields">nicknames (doc)</span></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===== CHARACTER SECTION ===== -->
+    <section class="admin-section" id="section-characters">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">캐릭터 관리</h2>
+          <p class="section-desc">캐릭터 정보, 스킬, 패치 이력, 팁을 관리합니다. Firestore <code>characters</code> 컬렉션과 동기화됩니다.</p>
+        </div>
+      </div>
+      <div class="section-btn-row">
+        <button class="btn-primary" id="btnAddChar">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          캐릭터 추가
+        </button>
+      </div>
+      <div class="admin-toolbar">
+        <span class="toolbar-count" id="charCountLabel">로딩 중...</span>
+        <select id="adminGradeFilter" class="admin-select">
+          <option value="all">전체 등급</option>
+          <option value="특전">특전</option>
+          <option value="SS">SS</option>
+          <option value="S">S</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+        </select>
+        <select id="adminAttributeFilter" class="admin-select">
+          <option value="all">전체 속성</option>
+          <option value="力">力</option>
+          <option value="技">技</option>
+          <option value="心">心</option>
+        </select>
+        <select id="adminBattleTypeFilter" class="admin-select">
+          <option value="all">전체 타입</option>
+          <option value="격투">격투</option>
+          <option value="검사">검사</option>
+          <option value="특수">특수</option>
+          <option value="원소">원소</option>
+        </select>
+        <div class="search-wrap">
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="search" id="adminCharSearch" class="admin-search" placeholder="캐릭터 이름 검색...">
+        </div>
+        <button class="btn-toolbar-icon" title="새로고침" onclick="loadCharacters()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+        <select class="admin-select per-page-select" id="charPerPage"><option value="10" selected>10개</option><option value="20">20개</option><option value="30">30개</option><option value="40">40개</option><option value="50">50개</option></select>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>이미지</th>
+              <th>캐릭터 이름</th>
+              <th>등급</th>
+              <th>속성</th>
+              <th>타입</th>
+              <th>노출 상태</th>
+              <th>관리자</th>
+              <th class="col-actions">작업</th>
+            </tr>
+          </thead>
+          <tbody id="charTableBody">
+            <tr><td colspan="9" class="table-loading"><div class="spinner"></div><span>데이터 로딩 중...</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-paginator" id="charPaginator"></div>
+      <div class="publish-bar">
+        <div class="publish-bar-content">
+          <p class="publish-bar-hint">저장 버튼 선택 시 Live 페이지에 노출 됩니다.<br>마지막 저장 버전으로 되돌리기 선택 시 등록 / 수정 / 삭제 하기 전 상태로 돌아갑니다.</p>
+          <div class="publish-bar-bottom">
+            <div class="publish-last-info" id="publishInfoChars" style="display:none"></div>
+            <div class="publish-bar-actions">
+              <button class="btn-revert" id="btnRevertChars" onclick="revertChars()">마지막 저장 버전으로 되돌리기</button>
+              <button class="btn-publish" id="btnPublishChars" onclick="publishChars()">저장</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SUPPORT CHARACTER SECTION ===== -->
+    <section class="admin-section" id="section-supportchars">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">현질 서폿 캐릭터 관리</h2>
+          <p class="section-desc">현질 서포트 캐릭터의 정보와 등급을 관리합니다. Firestore <code>supportCharacters</code> 컬렉션과 동기화됩니다.</p>
+        </div>
+      </div>
+      <div class="section-btn-row">
+        <button class="btn-primary" id="btnAddSupportChar">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          서포트 캐릭터 추가
+        </button>
+      </div>
+      <div class="admin-toolbar">
+        <span class="toolbar-count" id="scCountLabel">로딩 중...</span>
+        <select id="scGradeFilter" class="admin-select">
+          <option value="all">전체 등급</option>
+          <option value="특전">특전</option>
+          <option value="SS">SS</option>
+          <option value="S">S</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+        </select>
+        <div class="search-wrap">
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="search" id="scCharSearch" class="admin-search" placeholder="캐릭터 이름 검색...">
+        </div>
+        <button class="btn-toolbar-icon" title="새로고침" onclick="loadSupportChars()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+        <select class="admin-select per-page-select" id="scPerPage"><option value="10" selected>10개</option><option value="20">20개</option><option value="30">30개</option><option value="40">40개</option><option value="50">50개</option></select>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>이미지</th>
+              <th>캐릭터 이름</th>
+              <th>등급</th>
+              <th>노출 상태</th>
+              <th>관리자</th>
+              <th class="col-actions">작업</th>
+            </tr>
+          </thead>
+          <tbody id="scTableBody">
+            <tr><td colspan="7" class="table-loading"><div class="spinner"></div><span>데이터 로딩 중...</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-paginator" id="scPaginator"></div>
+      <div class="publish-bar">
+        <div class="publish-bar-content">
+          <p class="publish-bar-hint">저장 버튼 선택 시 Live 페이지에 노출 됩니다.<br>마지막 저장 버전으로 되돌리기 선택 시 등록 / 수정 / 삭제 하기 전 상태로 돌아갑니다.</p>
+          <div class="publish-bar-bottom">
+            <div class="publish-last-info" id="publishInfoSupportChars" style="display:none"></div>
+            <div class="publish-bar-actions">
+              <button class="btn-revert" id="btnRevertSupportChars" onclick="revertSupportChars()">마지막 저장 버전으로 되돌리기</button>
+              <button class="btn-publish" id="btnPublishSupportChars" onclick="publishSupportChars()">저장</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PVP PATCH SECTION ===== -->
+    <section class="admin-section" id="section-pvppatch">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">PvP 패치 관리</h2>
+          <p class="section-desc">캐릭터별 PvP 밸런스 패치 (버프 / 너프 / 수정) 를 관리합니다. Firestore <code>pvpPatch</code> 컬렉션과 동기화됩니다.</p>
+        </div>
+      </div>
+      <div class="section-btn-row">
+        <button class="btn-primary" id="btnAddPvp">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          패치 추가
+        </button>
+      </div>
+      <div class="admin-toolbar">
+        <span class="toolbar-count" id="pvpCountLabel">로딩 중...</span>
+        <select id="pvpTypeFilter" class="admin-select">
+          <option value="all">전체 타입</option>
+          <option value="buff">▲ 버프</option>
+          <option value="nerf">▼ 너프</option>
+          <option value="fix">✦ 기능 수정</option>
+        </select>
+        <div class="search-wrap">
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="search" id="pvpSearch" class="admin-search" placeholder="캐릭터 이름 검색...">
+        </div>
+        <button class="btn-toolbar-icon" title="새로고침" onclick="loadPvpPatches()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+        <select class="admin-select per-page-select" id="pvpPerPage"><option value="10" selected>10개</option><option value="20">20개</option><option value="30">30개</option><option value="40">40개</option><option value="50">50개</option></select>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>패치 날짜</th>
+              <th>캐릭터 ID</th>
+              <th>캐릭터 이름</th>
+              <th>타입</th>
+              <th>노출 상태</th>
+              <th>관리자</th>
+              <th class="col-actions">작업</th>
+            </tr>
+          </thead>
+          <tbody id="pvpTableBody">
+            <tr><td colspan="7" class="table-loading"><div class="spinner"></div><span>데이터 로딩 중...</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-paginator" id="pvpPaginator"></div>
+      <div class="publish-bar">
+        <div class="publish-bar-content">
+          <p class="publish-bar-hint">저장 버튼 선택 시 Live 페이지에 노출 됩니다.<br>마지막 저장 버전으로 되돌리기 선택 시 등록 / 수정 / 삭제 하기 전 상태로 돌아갑니다.</p>
+          <div class="publish-bar-bottom">
+            <div class="publish-last-info" id="publishInfoPvp" style="display:none"></div>
+            <div class="publish-bar-actions">
+              <button class="btn-revert" id="btnRevertPvp" onclick="revertPvpPatches()">마지막 저장 버전으로 되돌리기</button>
+              <button class="btn-publish" id="btnPublishPvp" onclick="publishPvpPatches()">저장</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PATCH NOTE SECTION ===== -->
+    <section class="admin-section" id="section-patchnote">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">패치노트 관리</h2>
+          <p class="section-desc">게임 업데이트 패치노트를 날짜별로 작성하고 관리합니다. Firestore <code>patchNotes</code> 컬렉션과 동기화됩니다.</p>
+        </div>
+      </div>
+      <div class="section-btn-row">
+        <button class="btn-primary" id="btnAddPatchNote">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          패치노트 추가
+        </button>
+      </div>
+      <div class="admin-toolbar">
+        <span class="toolbar-count" id="patchNoteCountLabel">로딩 중...</span>
+        <div class="search-wrap">
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="search" id="patchNoteSearch" class="admin-search" placeholder="제목 검색...">
+        </div>
+        <button class="btn-toolbar-icon" title="새로고침" onclick="loadPatchNotes()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+        <select class="admin-select per-page-select" id="patchPerPage"><option value="10" selected>10개</option><option value="20">20개</option><option value="30">30개</option><option value="40">40개</option><option value="50">50개</option></select>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>날짜</th>
+              <th>제목</th>
+              <th>노출 상태</th>
+              <th>관리자</th>
+              <th class="col-actions">작업</th>
+            </tr>
+          </thead>
+          <tbody id="patchNoteTableBody">
+            <tr><td colspan="7" class="table-loading"><div class="spinner"></div><span>데이터 로딩 중...</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-paginator" id="patchPaginator"></div>
+      <div class="publish-bar">
+        <div class="publish-bar-content">
+          <p class="publish-bar-hint">저장 버튼 선택 시 Live 페이지에 노출 됩니다.<br>마지막 저장 버전으로 되돌리기 선택 시 등록 / 수정 / 삭제 하기 전 상태로 돌아갑니다.</p>
+          <div class="publish-bar-bottom">
+            <div class="publish-last-info" id="publishInfoPatch" style="display:none"></div>
+            <div class="publish-bar-actions">
+              <button class="btn-revert" id="btnRevertPatchNotes" onclick="revertPatchNotes()">마지막 저장 버전으로 되돌리기</button>
+              <button class="btn-publish" id="btnPublishPatchNotes" onclick="publishPatchNotes()">저장</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== BANNER SECTION ===== -->
+    <section class="admin-section" id="section-banners">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">메인 배너 관리</h2>
+        </div>
+      </div>
+      <div class="section-btn-row">
+        <span class="toolbar-count" id="bannerCountLabel">로딩 중...</span>
+        <button class="btn-primary" id="btnAddBanner">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          배너 추가
+        </button>
+      </div>
+      <div class="admin-toolbar">
+        <button class="btn-order-manage" id="btnBannerOrder" onclick="openBannerOrderModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+          </svg>
+          순서 관리
+        </button>
+        <select id="bannerStatusFilter" class="admin-select">
+          <option value="all">전체 상태</option>
+          <option value="active">활성</option>
+          <option value="inactive">비활성</option>
+        </select>
+        <button class="btn-toolbar-icon" title="새로고침" onclick="loadBanners()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+        <div class="search-wrap">
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="search" id="bannerSearch" class="admin-search" placeholder="제목 검색...">
+        </div>
+        <select class="admin-select per-page-select" id="bannerPerPage"><option value="10" selected>10개</option><option value="20">20개</option><option value="30">30개</option><option value="40">40개</option><option value="50">50개</option></select>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>미리보기</th>
+              <th>제목</th>
+              <th>활성화 상태</th>
+              <th>노출 상태</th>
+              <th>관리자</th>
+              <th class="col-actions">작업</th>
+            </tr>
+          </thead>
+          <tbody id="bannerTableBody">
+            <tr><td colspan="7" class="table-loading"><div class="spinner"></div><span>데이터 로딩 중...</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-paginator" id="bannerPaginator"></div>
+      <div class="publish-bar">
+        <div class="publish-bar-content">
+          <p class="publish-bar-hint">저장 버튼 선택 시 Live 페이지에 노출 됩니다.<br>마지막 저장 버전으로 되돌리기 선택 시 등록 / 수정 / 삭제 하기 전 상태로 돌아갑니다.</p>
+          <div class="publish-bar-bottom">
+            <div class="publish-last-info" id="publishInfoBanners" style="display:none"></div>
+            <div class="publish-bar-actions">
+              <button class="btn-revert" id="btnRevertBanners" onclick="revertBanners()">마지막 저장 버전으로 되돌리기</button>
+              <button class="btn-publish" id="btnPublishBanners" onclick="publishBanners()">저장</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== EVENT PAGE SECTION ===== -->
+    <section class="admin-section" id="section-events">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">이벤트 관리</h2>
+          <p class="section-desc">이벤트 페이지를 작성하고 관리합니다. Firestore <code>events</code> 컬렉션과 동기화됩니다.</p>
+        </div>
+      </div>
+      <div class="section-btn-row">
+        <button class="btn-primary" id="btnAddEvtPage">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          이벤트 추가
+        </button>
+      </div>
+
+      <!-- 이벤트 배너 패널 -->
+      <!-- EVENT BANNER UI REMOVED
+      <div id="evtPanelBanner" style="display:none" aria-hidden="true">
+        <div class="admin-toolbar">
+          <span class="toolbar-count" id="evtBannerCountLabel">로딩 중...</span>
+          <button class="btn-order-manage" id="btnEvtBannerOrder" onclick="openEvtBannerOrderModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+            </svg>
+            순서 관리
+          </button>
+          <select id="evtBannerStatusFilter" class="admin-select">
+            <option value="all">전체 상태</option>
+            <option value="active">활성</option>
+            <option value="inactive">비활성</option>
+          </select>
+          <div class="search-wrap">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="search" id="evtBannerSearch" class="admin-search" placeholder="제목 검색...">
+          </div>
+          <button class="btn-toolbar-icon" title="새로고침" onclick="loadEvtBanners()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+          <select class="admin-select per-page-select" id="evtBannerPerPage"><option value="10" selected>10개</option><option value="20">20개</option><option value="30">30개</option><option value="50">50개</option></select>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>ID</th><th>미리보기</th><th>제목</th><th>활성화 상태</th><th>노출 상태</th><th>관리자</th><th class="col-actions">작업</th></tr></thead>
+            <tbody id="evtBannerTableBody"><tr><td colspan="7" class="table-loading"><div class="spinner"></div><span>데이터 로딩 중...</span></td></tr></tbody>
+          </table>
+        </div>
+        <div class="table-paginator" id="evtBannerPaginator"></div>
+      </div>
+
+      </div>
+      -->
+
+      <!-- 이벤트 페이지 패널 -->
+      <div id="evtPanelPage">
+        <div class="admin-toolbar">
+          <span class="toolbar-count" id="evtPageCountLabel">로딩 중...</span>
+          <div class="search-wrap">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="search" id="evtPageSearch" class="admin-search" placeholder="제목 검색...">
+          </div>
+          <button class="btn-toolbar-icon" title="새로고침" onclick="loadEvtPages()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+          <select class="admin-select per-page-select" id="evtPagePerPage"><option value="10" selected>10개</option><option value="20">20개</option><option value="30">30개</option><option value="50">50개</option></select>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>ID</th><th>날짜</th><th>제목</th><th>노출 상태</th><th>관리자</th><th class="col-actions">작업</th></tr></thead>
+            <tbody id="evtPageTableBody"><tr><td colspan="7" class="table-loading"><div class="spinner"></div><span>데이터 로딩 중...</span></td></tr></tbody>
+          </table>
+        </div>
+        <div class="table-paginator" id="evtPagePaginator"></div>
+      </div>
+
+      <div class="publish-bar" id="evtPagePublishBar">
+        <div class="publish-bar-content">
+          <p class="publish-bar-hint">저장 버튼 선택 시 Live 페이지에 노출 됩니다.<br>마지막 저장 버전으로 되돌리기 선택 시 등록 / 수정 / 삭제 하기 전 상태로 돌아갑니다.</p>
+          <div class="publish-bar-bottom">
+            <div class="publish-last-info" id="publishInfoEvtPages" style="display:none"></div>
+            <div class="publish-bar-actions">
+              <button class="btn-revert" id="btnRevertEvtPages" onclick="revertEvtPages()">마지막 저장 버전으로 되돌리기</button>
+              <button class="btn-publish" id="btnPublishEvtPages" onclick="publishEvtPages()">저장</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== NOTICES SECTION ===== -->
+    <section class="admin-section" id="section-notices">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">공지사항 관리</h2>
+          <p class="section-desc">사용자에게 표시할 공지사항을 작성하고 관리합니다. Firestore <code>notices</code> 컬렉션과 동기화됩니다.</p>
+        </div>
+      </div>
+
+      <div class="section-btn-row">
+        <button class="btn-primary" id="btnAddNotice">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          공지 추가
+        </button>
+      </div>
+
+      <div class="admin-toolbar">
+        <span class="toolbar-count" id="noticeCountLabel">로딩 중...</span>
+        <div class="search-wrap">
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="search" id="noticeSearch" class="admin-search" placeholder="제목 검색...">
+        </div>
+        <button class="btn-toolbar-icon" title="새로고침" onclick="loadNotices()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+        <select class="admin-select per-page-select" id="noticePerPage">
+          <option value="10" selected>10개</option>
+          <option value="20">20개</option>
+          <option value="30">30개</option>
+          <option value="50">50개</option>
+        </select>
+      </div>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="width:60px">고정</th>
+              <th>제목</th>
+              
+              <th style="width:70px">노출</th>
+              <th style="width:120px">관리자</th>
+              <th class="col-actions">작업</th>
+            </tr>
+          </thead>
+          <tbody id="noticeTableBody">
+            <tr><td colspan="6" class="table-loading"><div class="spinner"></div><span>데이터 로딩 중...</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-paginator" id="noticePaginator"></div>
+
+      <div class="publish-bar" id="noticesPublishBar">
+        <div class="publish-bar-content">
+          <p class="publish-bar-hint">저장 버튼 선택 시 Live 페이지에 노출 됩니다.<br>마지막 저장 버전으로 되돌리기 선택 시 등록 / 수정 / 삭제 하기 전 상태로 돌아갑니다.</p>
+          <div class="publish-bar-bottom">
+            <div class="publish-last-info" id="publishInfoNotices" style="display:none"></div>
+            <div class="publish-bar-actions">
+              <button class="btn-revert" id="btnRevertNotices" onclick="revertNotices()">마지막 저장 버전으로 되돌리기</button>
+              <button class="btn-publish" id="btnPublishNotices" onclick="publishNotices()">저장</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== BOARD MANAGEMENT SECTION ===== -->
+    <section class="admin-section" id="section-boards">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">게시판 관리</h2>
+          <p class="section-desc">서비스 게시판의 운영 상태와 게시판별 설정을 관리합니다.</p>
+        </div>
+      </div>
+      <div class="backup-block">
+        <div class="backup-block-header">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h5m7-2a8 8 0 11-16 0 8 8 0 0016 0z"/></svg>
+          <div>
+            <div class="backup-block-title">게시판 운영</div>
+            <div class="backup-block-desc">게시판 기능과 데이터 연결을 위한 관리 화면입니다.</div>
+          </div>
+        </div>
+        <div class="dashboard-admin-card">
+          <div class="dash-homepage-title">게시판 관리 기능 준비 중</div>
+          <div class="dash-homepage-desc">게시판 컬렉션과 게시판별 공개 범위가 설정되면 이 화면에서 게시판을 추가·수정·비활성화할 수 있습니다.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CUSTOMER SUPPORT SECTION ===== -->
+    <section class="admin-section" id="section-support">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">고객센터 관리</h2>
+          <p class="section-desc">문의 접수와 고객센터 콘텐츠를 운영합니다.</p>
+        </div>
+      </div>
+      <div class="backup-block">
+        <div class="backup-block-header">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h5m7-2a8 8 0 11-16 0 8 8 0 0016 0z"/></svg>
+          <div>
+            <div class="backup-block-title">고객센터 운영</div>
+            <div class="backup-block-desc">문의 및 FAQ 관리 기능을 연결할 수 있는 운영 화면입니다.</div>
+          </div>
+        </div>
+        <div class="dashboard-admin-card">
+          <div class="dash-homepage-title">고객센터 관리 기능 준비 중</div>
+          <div class="dash-homepage-desc">고객 문의 데이터가 연결되면 접수·처리 상태와 답변을 이 화면에서 관리할 수 있습니다.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== BACKUP / RESTORE SECTION ===== -->
+    <section class="admin-section" id="section-backup">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">백업 / 복원</h2>
+          <p class="section-desc">Firestore 데이터를 JSON으로 내보내거나, 백업 파일로 복원합니다.</p>
+        </div>
+      </div>
+
+      <div class="backup-block">
+        <div class="backup-block-header">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          <div>
+            <div class="backup-block-title">내보내기 (Export)</div>
+            <div class="backup-block-desc">Firestore 컬렉션 전체를 JSON 파일로 다운로드합니다.</div>
+          </div>
+        </div>
+        <div class="backup-export-grid">
+          <div class="backup-export-card">
+            <div class="backup-export-card-label">배너</div>
+            <div class="backup-export-card-hint">banners 컬렉션</div>
+            <button class="btn-primary" onclick="exportCollection('banners')">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              다운로드
+            </button>
+          </div>
+          <div class="backup-export-card">
+            <div class="backup-export-card-label">캐릭터</div>
+            <div class="backup-export-card-hint">characters 컬렉션</div>
+            <button class="btn-primary" onclick="exportCollection('characters')">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              다운로드
+            </button>
+          </div>
+          <div class="backup-export-card">
+            <div class="backup-export-card-label">서폿 캐릭터</div>
+            <div class="backup-export-card-hint">supportCharacters 컬렉션</div>
+            <button class="btn-primary" onclick="exportCollection('supportCharacters')">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              다운로드
+            </button>
+          </div>
+          <div class="backup-export-card">
+            <div class="backup-export-card-label">패치노트</div>
+            <div class="backup-export-card-hint">patchNotes 컬렉션</div>
+            <button class="btn-primary" onclick="exportCollection('patchNotes')">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              다운로드
+            </button>
+          </div>
+          <div class="backup-export-card">
+            <div class="backup-export-card-label">PvP 패치</div>
+            <div class="backup-export-card-hint">pvpPatch 컬렉션</div>
+            <button class="btn-primary" onclick="exportCollection('pvpPatch')">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              다운로드
+            </button>
+          </div>
+        </div>
+        <button class="btn-secondary" style="margin-top:12px" onclick="exportAll()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          전체 통합 백업 (all_backup.json)
+        </button>
+      </div>
+
+      <div class="backup-block">
+        <div class="backup-block-header">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12"/></svg>
+          <div>
+            <div class="backup-block-title">복원 (Import)</div>
+            <div class="backup-block-desc">JSON 백업 파일을 업로드해 Firestore에 복원합니다. 기존 문서는 병합(merge)됩니다.</div>
+          </div>
+        </div>
+        <div class="backup-import-area">
+          <div class="backup-import-row">
+            <select id="importTargetCollection" class="admin-select">
+              <option value="banners">banners (배너)</option>
+              <option value="characters">characters (캐릭터)</option>
+              <option value="supportCharacters">supportCharacters (서폿 캐릭터)</option>
+              <option value="patchNotes">patchNotes (패치노트)</option>
+              <option value="pvpPatch">pvpPatch (PvP 패치)</option>
+            </select>
+            <label class="btn-secondary" style="cursor:pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:15px;height:15px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+              JSON 파일 선택
+              <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="handleImportFile(event)">
+            </label>
+          </div>
+          <div class="backup-import-preview" id="importPreview" style="display:none">
+            <div class="import-preview-header">
+              <span id="importPreviewLabel"></span>
+              <button class="btn-danger" onclick="confirmImport()" id="btnConfirmImport">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12"/></svg>
+                <span id="importBtnText">Firestore에 복원</span>
+                <div class="btn-spinner" id="importSpinner" style="display:none"></div>
+              </button>
+            </div>
+            <pre id="importPreviewContent" class="import-preview-code"></pre>
+          </div>
+        </div>
+        <div class="backup-import-notice">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          복원 시 기존 문서와 병합됩니다. 새 문서 ID로 추가되며 기존 데이터를 덮어쓰지 않습니다.
+        </div>
+      </div>
+
+      <div class="backup-block">
+        <div class="backup-block-header">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          <div>
+            <div class="backup-block-title">Firestore 보안 규칙</div>
+            <div class="backup-block-desc">아래 규칙을 Firebase Console → Firestore → 규칙 탭에 붙여넣으세요.</div>
+          </div>
+        </div>
+        <pre class="firestore-rules-code" id="firestoreRulesDisplay"></pre>
+        <button class="btn-secondary" style="margin-top:10px" onclick="copyFirestoreRules()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          규칙 복사
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== USER PAGE SHORTCUT SECTION ===== -->
+    <section class="admin-section" id="section-userpage">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">사용자 페이지</h2>
+          <p class="section-desc">실제 사용자 화면을 확인합니다.</p>
+        </div>
+      </div>
+      <div class="dash-homepage-card">
+        <div class="dash-homepage-logo">
+          <img src="img/logo-dark.png" alt="Logo" class="logo-img" />
+        </div>
+        <div class="dash-homepage-info">
+          <div class="dash-homepage-title">Fighting Path Patch 사용자 페이지</div>
+          <div class="dash-homepage-desc">패치노트, PvP 밸런스, 캐릭터 정보를 사용자 화면에서 확인할 수 있습니다.</div>
+        </div>
+        <a href="https://kimnatsu.github.io/STGFPPatch_V2/ko/Main.html" target="_blank" rel="noopener noreferrer" class="dash-homepage-btn">
+          사용자 페이지 열기
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+          </svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- ===== PROFILE SECTION ===== -->
+    <section class="admin-section" id="section-profile">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">내 정보</h2>
+          <p class="section-desc">관리자 계정 정보 및 프로필(닉네임, 프로필 이미지)을 확인하고 수정합니다.</p>
+        </div>
+      </div>
+
+      <div class="profile-card">
+        <div class="profile-avatar-area">
+          <div class="profile-avatar-wrap" id="profileAvatarWrap">
+            <img class="profile-avatar-img" id="profileAvatarImg" src="" alt="" style="display:none">
+            <div class="profile-photo-dim"></div>
+            <div class="profile-avatar-placeholder" id="profileAvatarPlaceholder">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              </svg>
+            </div>
+            <div class="profile-avatar-edit" id="profileAvatarEditBtn" style="display:none">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-info-area">
+          <div class="profile-view" id="profileView">
+            <div class="profile-field">
+              <div class="profile-field-label">닉네임</div>
+              <div class="profile-field-value" id="profileNicknameView">—</div>
+            </div>
+            <div class="profile-field">
+              <div class="profile-field-label">로그인 계정 이메일</div>
+              <div class="profile-field-value profile-field-email" id="profileEmailView">—</div>
+            </div>
+            <div class="profile-actions">
+              <button class="btn-primary" id="btnProfileEdit">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                수정
+              </button>
+            </div>
+          </div>
+
+          <div class="profile-edit" id="profileEdit" style="display:none">
+            <div class="profile-field">
+              <div class="profile-field-label">닉네임</div>
+              <div class="profile-nickname-wrap">
+                <input type="text" class="form-input profile-nickname-input" id="profileNicknameInput"
+                  placeholder="2~12자로 입력해주세요" maxlength="12" autocomplete="off">
+                <span class="profile-nickname-count"><span id="profileNicknameLen">0</span>/12</span>
+              </div>
+            </div>
+            <div class="profile-field">
+              <div class="profile-field-label">프로필 사진</div>
+              <div class="avatar-picker-tabs" id="adminAvatarPickerTabs">
+                <button type="button" class="avatar-picker-tab active" data-adminavatartab="strawhats">밀짚모자 해적단</button>
+                <button type="button" class="avatar-picker-tab" data-adminavatartab="warlords">칠무해</button>
+                <button type="button" class="avatar-picker-tab" data-adminavatartab="marines">해군</button>
+                <button type="button" class="avatar-picker-tab" data-adminavatartab="yonko">사황</button>
+                <button type="button" class="avatar-picker-tab" data-adminavatartab="allies">조력자</button>
+                <button type="button" class="avatar-picker-tab" data-adminavatartab="pirate_king">해적왕</button>
+              </div>
+              <div class="avatar-grid" id="adminAvatarGridStrawhats"></div>
+              <div class="avatar-grid" id="adminAvatarGridWarlords" style="display:none"></div>
+              <div class="avatar-grid" id="adminAvatarGridMarines"  style="display:none"></div>
+              <div class="avatar-grid" id="adminAvatarGridYonko"   style="display:none"></div>
+              <div class="avatar-grid" id="adminAvatarGridAllies"   style="display:none"></div>
+              <div class="avatar-grid" id="adminAvatarGridPirateKing" style="display:none"></div>
+            </div>
+            <div class="profile-field">
+              <div class="profile-field-label">로그인 계정 이메일</div>
+              <div class="profile-field-value profile-field-email" id="profileEmailEdit">—</div>
+              <span class="form-hint">이메일은 Firebase Authentication에서 관리됩니다. 변경 불가.</span>
+            </div>
+            <div class="form-error" id="profileFormError" style="display:none"></div>
+            <div class="profile-actions">
+              <button class="btn-secondary" id="btnProfileCancel">취소</button>
+              <button class="btn-primary" id="btnProfileSave">
+                <span id="profileSaveBtnText">저장</span>
+                <div class="btn-spinner" id="profileSaveSpinner" style="display:none"></div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MEMBER MANAGEMENT SECTION ===== -->
+    <section class="admin-section" id="section-members">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">멤버 관리</h2>
+          <p class="section-desc">서비스 사용자 목록과 글쓰기 권한을 관리합니다.</p>
+        </div>
+      </div>
+      <div class="admin-toolbar" style="margin-bottom:12px">
+        <span class="toolbar-count" id="permUserCountLabel">로딩 중...</span>
+        <div class="search-wrap">
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="search" id="permUserSearch" class="admin-search" placeholder="닉네임 또는 이메일 검색...">
+        </div>
+        <button class="btn-toolbar-icon" title="새로고침" id="btnRefreshPermUsers">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>프로필</th><th>닉네임</th><th>UID</th><th>글쓰기 권한</th><th class="col-actions">작업</th></tr>
+          </thead>
+          <tbody id="permUserTableBody">
+            <tr><td colspan="5" class="table-loading"><div class="spinner"></div><span>데이터 로딩 중...</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-paginator" id="permUserPaginator"></div>
+    </section>
+
+    <!-- ===== PERMISSIONS SECTION ===== -->
+    <section class="admin-section" id="section-permissions">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">권한 관리</h2>
+          <p class="section-desc">관리자 계정별 접근 범위와 기능 권한을 관리합니다.</p>
+        </div>
+      </div>
+
+      <!-- 탭 -->
+      <div class="perm-tabs" style="display:none">
+        <button class="perm-tab active" data-permtab="users">사용자 권한</button>
+        <button class="perm-tab" data-permtab="admins">관리자 권한</button>
+      </div>
+
+      <!-- 사용자 권한 화면은 멤버 관리로 분리되었습니다.
+      USER PERMISSION PANEL (MOVED TO MEMBERS)
+      <div class="perm-panel" id="permPanelUsers" style="display:none">
+        <div class="admin-toolbar" style="margin-bottom:12px">
+          <span class="toolbar-count" id="permUserCountLabel">로딩 중...</span>
+          <div class="search-wrap">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input type="search" id="permUserSearch" class="admin-search" placeholder="닉네임 또는 이메일 검색...">
+          </div>
+          <button class="btn-toolbar-icon" title="새로고침" id="btnRefreshPermUsers">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>프로필</th>
+                <th>닉네임</th>
+                <th>UID</th>
+                <th>글쓰기 권한</th>
+                <th class="col-actions">작업</th>
+              </tr>
+            </thead>
+            <tbody id="permUserTableBody">
+              <tr><td colspan="6" class="table-loading"><div class="spinner"></div><span>데이터 로딩 중...</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-paginator" id="permUserPaginator"></div>
+      </div>
+
+      -->
+      <!-- ── 관리자 권한 탭 ── -->
+      <div class="perm-panel" id="permPanelAdmins">
+        <p class="section-desc" style="margin-bottom:12px;color:var(--text-muted)">
+          아래 관리자 목록에서 각 권한을 부여하거나 해제할 수 있습니다.<br>
+          <strong>콘텐츠 관리 편집</strong> : 콘텐츠 관리 섹션(캐릭터·배너·패치노트 등) 수정 및 편집 가능<br>
+          <strong>권한 관리 접근</strong> : 해당 관리자에게 권한 관리 메뉴를 노출 (총괄 관리자만 설정 가능)<br>
+          <strong>세부 권한 설정</strong> : 섹션별(배너/캐릭터/서포트캐릭터/패치노트/PvP패치) 보기·추가·수정·삭제·저장 권한을 세부 설정
+        </p>
+        <div class="admin-toolbar" style="margin-bottom:12px">
+          <span class="toolbar-count" id="permAdminCountLabel">로딩 중...</span>
+          <button class="btn-toolbar-icon" title="새로고침" id="btnRefreshPermAdmins">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>닉네임</th>
+                <th>이메일</th>
+                <th>사용자 권한 관리</th>
+                <th>세부 권한 설정</th>
+                <th>권한관리 탭 접근</th>
+                <th class="col-actions">작업</th>
+              </tr>
+            </thead>
+            <tbody id="permAdminTableBody">
+              <tr><td colspan="5" class="table-loading"><div class="spinner"></div><span>데이터 로딩 중...</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== CHARACTER FORM MODAL ===== -->
+<div class="modal-overlay" id="charFormOverlay">
+  <div class="modal-panel" id="charFormPanel">
+    <div class="modal-panel-header">
+      <h2 id="charFormTitle">캐릭터 추가</h2>
+      <button class="modal-close-btn" id="charFormClose">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-panel-body">
+      <form id="charForm" novalidate>
+        <div class="form-section">
+          <div class="form-section-label">기본 정보 <span class="required">*</span></div>
+          <div class="form-group">
+            <label class="form-label">ID</label>
+            <input type="text" id="charAutoIdDisplay" class="form-input" readonly style="cursor:default;opacity:.65;background:var(--bg-card,#1e2330)">
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label" for="fieldGrade">등급 <span class="required">*</span></label>
+              <select id="fieldGrade" class="form-input">
+                <option value="">등급 선택</option>
+                <option value="특전">특전</option>
+                <option value="SS">SS</option>
+                <option value="S">S</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="fieldAttribute">속성 <span class="required">*</span></label>
+              <select id="fieldAttribute" class="form-input" required>
+                <option value="">속성 선택</option>
+                <option value="力">力</option>
+                <option value="技">技</option>
+                <option value="心">心</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="fieldType">특성 <span class="required">*</span></label>
+              <select id="fieldType" class="form-input">
+                <option value="">특성 선택</option>
+                <option value="격투">격투</option>
+                <option value="검사">검사</option>
+                <option value="특수">특수</option>
+                <option value="원소">원소</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fieldName">이름 <span class="required">*</span></label>
+            <input type="text" id="fieldName" class="form-input" placeholder="캐릭터 이름" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">이미지 파일 <span class="required">*</span></label>
+            <div class="img-upload-widget">
+              <div class="img-upload-preview-box" id="charImgPreviewBox">
+                <img id="imgPreview" src="" alt="" style="display:none">
+                <div class="img-upload-placeholder" id="imgPreviewPlaceholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/></svg>
+                </div>
+              </div>
+              <div class="img-upload-side">
+                <ul class="img-upload-specs">
+                  <li>이미지 사이즈 : 500×500 px (자동 리사이즈)</li>
+                  <li>최대 용량 : 3 MB</li>
+                  <li>확장자 : jpg, png, gif</li>
+                </ul>
+                <input type="hidden" id="fieldImgData">
+                <input type="file" id="fieldImg" accept="image/jpeg,image/png,image/gif" style="display:none">
+                <div class="img-upload-btn-row" id="fieldImgBtnRow">
+                  <label class="btn-upload-trigger" for="fieldImg">
+                    업로드
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  </label>
+                </div>
+                <div class="img-upload-url-row" id="fieldImgUrlRow" style="display:none">
+                  <span class="img-upload-url-text" id="fieldImgUrlText"></span>
+                  <button type="button" class="btn-img-edit" id="fieldImgEditBtn" title="이미지 편집" onclick="openImgEditor('char')">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                    편집
+                  </button>
+                  <button type="button" class="btn-img-remove" id="fieldImgRemove" title="이미지 제거">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-header">
+            <div class="skill-section-left">
+              <button type="button" class="skill-section-toggle" id="skillToggleBtn" onclick="toggleSkillSection('skillsList','skillCountBadge','skillToggleBtn')" title="접기/펼치기">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div class="form-section-label">
+                스킬 목록
+                <span class="skill-count-badge" id="skillCountBadge" style="display:none">0</span>
+              </div>
+            </div>
+            <div class="skill-preset-wrap">
+              <label class="skill-preset-label">
+                <input type="checkbox" id="skillPresetCheck">
+                <span class="skill-preset-text">기본 세트</span>
+              </label>
+              <span class="skill-preset-help-wrap">
+                <svg class="skill-preset-help-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-4m0-4h.01"/></svg>
+                <span class="skill-preset-tooltip">체크박스 선택 후 스킬 추가 버튼 선택 시<br>기본 스킬 8개가 한번에 추가됩니다.</span>
+              </span>
+              <button type="button" class="btn-add-sub" id="btnAddSkill">+ 스킬 추가</button>
+            </div>
+          </div>
+          <div id="skillsList" class="sub-items-list"></div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-header">
+            <div class="skill-section-left">
+              <button type="button" class="skill-section-toggle" id="supportSkillToggleBtn" onclick="toggleSkillSection('supportSkillsList','supportSkillCountBadge','supportSkillToggleBtn')" title="접기/펼치기">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div class="form-section-label">
+                서포트 스킬 목록
+                <span class="skill-count-badge" id="supportSkillCountBadge" style="display:none">0</span>
+              </div>
+            </div>
+            <button type="button" class="btn-add-sub" id="btnAddSupportSkill">+ 서포트 스킬 추가</button>
+          </div>
+          <div id="supportSkillsList" class="sub-items-list"></div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-header">
+            <div class="skill-section-left">
+              <button type="button" class="skill-section-toggle" id="tipToggleBtn" onclick="toggleSkillSection('tipsList','tipCountBadge','tipToggleBtn')" title="접기/펼치기">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div class="form-section-label">
+                꿀팁
+                <span class="skill-count-badge" id="tipCountBadge" style="display:none">0</span>
+              </div>
+            </div>
+            <button type="button" class="btn-add-sub" id="btnAddTip">+ 꿀팁 추가</button>
+          </div>
+          <div id="tipsList" class="sub-items-list"></div>
+        </div>
+
+      </form>
+    </div>
+    <div class="modal-panel-footer">
+      <div class="form-error" id="formError" style="display:none"></div>
+      <div class="footer-actions">
+        <button type="button" class="btn-secondary" id="charFormCancel">취소</button>
+        <button type="button" class="btn-primary" id="charFormSubmit">
+          <span id="submitBtnText">등록</span>
+          <div class="btn-spinner" id="submitSpinner" style="display:none"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SUPPORT CHARACTER FORM MODAL ===== -->
+<div class="modal-overlay" id="scFormOverlay">
+  <div class="modal-panel" id="scFormPanel">
+    <div class="modal-panel-header">
+      <h2 id="scFormTitle">서포트 캐릭터 추가</h2>
+      <button class="modal-close-btn" id="scFormClose">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-panel-body">
+      <form id="scForm" novalidate>
+        <div class="form-section">
+          <div class="form-section-label">기본 정보</div>
+          <div class="form-group">
+            <label class="form-label">ID</label>
+            <input type="text" id="scAutoIdDisplay" class="form-input" readonly style="cursor:default;opacity:.65;background:var(--bg-card,#1e2330)">
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label" for="scFieldGrade">등급 <span class="required">*</span></label>
+              <select id="scFieldGrade" class="form-input">
+                <option value="">등급 선택</option>
+                <option value="특전">특전</option>
+                <option value="SS">SS</option>
+                <option value="S">S</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="scFieldName">이름 <span class="required">*</span></label>
+            <input type="text" id="scFieldName" class="form-input" placeholder="캐릭터 이름" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">이미지 파일 <span class="required">*</span></label>
+            <div class="img-upload-widget">
+              <div class="img-upload-preview-box" id="scImgPreviewBox">
+                <img id="scImgPreview" src="" alt="" style="display:none">
+                <div class="img-upload-placeholder" id="scImgPreviewPlaceholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/></svg>
+                </div>
+              </div>
+              <div class="img-upload-side">
+                <ul class="img-upload-specs">
+                  <li>이미지 사이즈 : 500×500 px (자동 리사이즈)</li>
+                  <li>최대 용량 : 3 MB</li>
+                  <li>확장자 : jpg, png, gif</li>
+                </ul>
+                <input type="hidden" id="scFieldImgData">
+                <input type="file" id="scFieldImg" accept="image/jpeg,image/png,image/gif" style="display:none">
+                <div class="img-upload-btn-row" id="scFieldImgBtnRow">
+                  <label class="btn-upload-trigger" for="scFieldImg">
+                    업로드
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  </label>
+                </div>
+                <div class="img-upload-url-row" id="scFieldImgUrlRow" style="display:none">
+                  <span class="img-upload-url-text" id="scFieldImgUrlText"></span>
+                  <button type="button" class="btn-img-edit" id="scFieldImgEditBtn" title="이미지 편집" onclick="openImgEditor('supportChar')">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                    편집
+                  </button>
+                  <button type="button" class="btn-img-remove" id="scFieldImgRemove" title="이미지 제거">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-header">
+            <div class="skill-section-left">
+              <button type="button" class="skill-section-toggle" id="scSupportSkillToggleBtn" onclick="toggleSkillSection('scSupportSkillsList','scSupportSkillCountBadge','scSupportSkillToggleBtn')" title="접기/펼치기">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div class="form-section-label">
+                서포트 스킬 목록
+                <span class="skill-count-badge" id="scSupportSkillCountBadge" style="display:none">0</span>
+              </div>
+            </div>
+            <button type="button" class="btn-add-sub" id="scBtnAddSupportSkill">+ 서포트 스킬 추가</button>
+          </div>
+          <div id="scSupportSkillsList" class="sub-items-list"></div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-header">
+            <div class="skill-section-left">
+              <button type="button" class="skill-section-toggle" id="scTipToggleBtn" onclick="toggleSkillSection('scTipsList','scTipCountBadge','scTipToggleBtn')" title="접기/펼치기">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div class="form-section-label">
+                꿀팁
+                <span class="skill-count-badge" id="scTipCountBadge" style="display:none">0</span>
+              </div>
+            </div>
+            <button type="button" class="btn-add-sub" id="scBtnAddTip">+ 꿀팁 추가</button>
+          </div>
+          <div id="scTipsList" class="sub-items-list"></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-panel-footer">
+      <div class="form-error" id="scFormError" style="display:none"></div>
+      <div class="footer-actions">
+        <button type="button" class="btn-secondary" id="scFormCancel">취소</button>
+        <button type="button" class="btn-primary" id="scFormSubmit">
+          <span id="scSubmitBtnText">등록</span>
+          <div class="btn-spinner" id="scSubmitSpinner" style="display:none"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PVP PATCH FORM MODAL ===== -->
+<div class="modal-overlay" id="pvpFormOverlay">
+  <div class="modal-panel">
+    <div class="modal-panel-header">
+      <h2 id="pvpFormTitle">PvP 패치 추가</h2>
+      <button class="modal-close-btn" id="pvpFormClose">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-panel-body">
+      <!-- 1. 패치 날짜 (드롭다운 표시 날짜) -->
+      <div class="form-section">
+        <div class="form-section-label">패치 날짜 <span class="form-hint-badge">사용자 드롭다운 표시 날짜</span></div>
+        <div class="form-group">
+          <input type="date" id="pvpFieldPatchDate" class="form-input" style="max-width:200px">
+          <span class="form-hint">미입력 시 저장 시각 기준으로 자동 설정됩니다</span>
+        </div>
+      </div>
+      <!-- 2. 기본 정보 -->
+      <div class="form-section">
+        <div class="form-section-label">기본 정보</div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="pvpFieldCharId">캐릭터</label>
+            <select id="pvpFieldCharId" class="form-input">
+              <option value="">캐릭터 선택</option>
+            </select>
+            <span class="form-hint">캐릭터 관리에서 먼저 캐릭터를 추가하세요</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pvpFieldSupportCharId">현질 서폿 캐릭터</label>
+            <select id="pvpFieldSupportCharId" class="form-input">
+              <option value="">서폿 캐릭터 선택</option>
+            </select>
+            <span class="form-hint">해당 패치에 관련된 현질 서포트 캐릭터를 선택하세요</span>
+          </div>
+        </div>
+        <!-- 타입 -->
+        <div class="form-group" style="margin-top:12px">
+          <label class="form-label" for="pvpFieldType">타입 <span class="required">*</span></label>
+          <select id="pvpFieldType" class="form-input">
+            <option value="">타입 선택</option>
+            <option value="buff">▲ 버프</option>
+            <option value="nerf">▼ 너프</option>
+            <option value="fix">✦ 기능 수정</option>
+          </select>
+        </div>
+      </div>
+      <!-- 3. 패치 항목 -->
+      <div class="form-section">
+        <div class="form-section-header">
+          <div class="form-section-label">패치 항목 <span class="required">*</span></div>
+          <button type="button" class="btn-add-sub" id="btnAddPvpPatch">+ 항목 추가</button>
+        </div>
+        <div id="pvpPatchesList" class="sub-items-list"></div>
+      </div>
+    </div>
+    <div class="modal-panel-footer">
+      <div class="form-error" id="pvpFormError" style="display:none"></div>
+      <div class="footer-actions">
+        <button type="button" class="btn-secondary" id="pvpFormCancel">취소</button>
+        <button type="button" class="btn-primary" id="pvpFormSubmit">
+          <span id="pvpSubmitBtnText">등록</span>
+          <div class="btn-spinner" id="pvpSubmitSpinner" style="display:none"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PATCH NOTE FORM MODAL ===== -->
+<div class="modal-overlay" id="patchNoteFormOverlay">
+  <div class="modal-panel modal-panel-wide">
+    <div class="modal-panel-header">
+      <h2 id="patchNoteFormTitle">패치노트 추가</h2>
+      <button class="modal-close-btn" id="patchNoteFormClose">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-panel-body">
+      <div class="form-section">
+        <div class="form-section-label">기본 정보</div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">ID</label>
+            <input type="text" id="pnAutoIdDisplay" class="form-input" readonly style="cursor:default;opacity:.65;background:var(--bg-card,#1e2330)">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pnFieldDate">날짜 <span class="required">*</span></label>
+            <input type="date" id="pnFieldDate" class="form-input">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pnFieldTitle">제목 <span class="required">*</span></label>
+          <input type="text" id="pnFieldTitle" class="form-input" placeholder="패치노트 제목">
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-label">본문 <span class="required">*</span></div>
+        <div class="form-group">
+          <textarea id="pnEditor" name="pnEditor" style="width:100%; min-height:300px;"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-panel-footer">
+      <div class="form-error" id="pnFormError" style="display:none"></div>
+      <div class="footer-actions">
+        <button type="button" class="btn-secondary" id="patchNoteFormCancel">취소</button>
+        <button type="button" class="btn-primary" id="patchNoteFormSubmit">
+          <span id="pnSubmitBtnText">등록</span>
+          <div class="btn-spinner" id="pnSubmitSpinner" style="display:none"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BANNER FORM MODAL ===== -->
+<div class="modal-overlay" id="bannerFormOverlay">
+  <div class="modal-panel">
+    <div class="modal-panel-header">
+      <h2 id="bannerFormTitle">배너 추가</h2>
+      <button class="modal-close-btn" id="bannerFormClose">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-panel-body">
+      <form id="bannerForm" novalidate>
+        <div class="form-section">
+          <div class="form-section-label">배너 정보</div>
+          <!-- 정렬 순서: UI에서 제거, 데이터 구조 유지용 hidden input -->
+          <input type="hidden" id="bannerFieldOrder" value="0">
+          <div class="form-group">
+            <label class="form-label">ID</label>
+            <input type="text" id="bannerAutoIdDisplay" class="form-input" readonly style="cursor:default;opacity:.65;background:var(--bg-card,#1e2330)">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bannerFieldTitle">제목 <span class="required">*</span></label>
+            <input type="text" id="bannerFieldTitle" class="form-input" placeholder="배너 위에 표시될 제목">
+          </div>
+          <div class="form-group">
+            <label class="form-label">활성화 상태 <span class="required">*</span></label>
+            <div class="banner-toggle-row">
+              <label class="toggle-switch-label">
+                <input type="checkbox" id="bannerFieldIsActive" checked>
+                <span class="toggle-track">
+                  <span class="toggle-thumb"></span>
+                </span>
+                <span class="toggle-text" id="bannerToggleText">활성화 On</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">이미지 등록 <span class="required">*</span></label>
+            <div class="img-upload-widget">
+              <div class="img-upload-preview-box banner-upload-preview" id="bannerImgPreviewBox">
+                <img id="bannerImgPreview" src="" alt="" style="display:none">
+                <div class="img-upload-placeholder" id="bannerImgPreviewPlaceholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/></svg>
+                </div>
+              </div>
+              <div class="img-upload-side">
+                <ul class="img-upload-specs">
+                  <li>이미지 사이즈 : 1920×645 px (자동 리사이즈)</li>
+                  <li>최대 용량 : 3 MB</li>
+                  <li>확장자 : jpg, png, gif</li>
+                </ul>
+                <input type="hidden" id="bannerFieldImageUrl">
+                <input type="file" id="bannerFieldImg" accept="image/jpeg,image/png,image/gif" style="display:none">
+                <div class="img-upload-btn-row" id="bannerFieldImgBtnRow">
+                  <label class="btn-upload-trigger" for="bannerFieldImg">
+                    업로드
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  </label>
+                </div>
+                <div class="img-upload-url-row" id="bannerFieldImgUrlRow" style="display:none">
+                  <span class="img-upload-url-text" id="bannerFieldImgUrlText"></span>
+                  <button type="button" class="btn-img-remove" id="bannerFieldImgRemove" title="이미지 제거">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">클릭 동작 (선택)</label>
+            <select id="bannerLinkType" class="form-input" style="margin-bottom:8px">
+              <option value="none">없음</option>
+              <option value="external">외부 링크 열기</option>
+              <option value="page">내부 탭 이동</option>
+            </select>
+            <div id="bannerLinkExternalWrap" style="display:none">
+              <input type="url" id="bannerFieldLink" class="form-input" placeholder="https://...">
+            </div>
+            <div id="bannerLinkPageWrap" style="display:none">
+              <select id="bannerFieldPage" class="form-input">
+                <option value="home">홈</option>
+                <option value="character">캐릭터</option>
+                <option value="patchnote">패치노트</option>
+                <option value="pvppatch">PvP 패치</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-panel-footer">
+      <div class="form-error" id="bannerFormError" style="display:none"></div>
+      <div class="footer-actions">
+        <button type="button" class="btn-secondary" id="bannerFormCancel">취소</button>
+        <button type="button" class="btn-primary" id="bannerFormSubmit">
+          <span id="bannerSubmitBtnText">등록</span>
+          <div class="btn-spinner" id="bannerSubmitSpinner" style="display:none"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EVENT BANNER FORM MODAL ===== -->
+<!-- EVENT BANNER FORM REMOVED
+<div class="modal-overlay" id="evtBnrFormOverlay" style="display:none" aria-hidden="true">
+  <div class="modal-panel">
+    <div class="modal-panel-header">
+      <h2 id="evtBnrFormTitle">이벤트 배너 추가</h2>
+      <button class="modal-close-btn" id="evtBnrFormClose">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-panel-body">
+      <form id="evtBnrForm" novalidate>
+        <div class="form-section">
+          <div class="form-section-label">배너 정보</div>
+          <input type="hidden" id="evtBnrFieldOrder" value="0">
+          <div class="form-group">
+            <label class="form-label">ID</label>
+            <input type="text" id="evtBnrAutoIdDisplay" class="form-input" readonly style="cursor:default;opacity:.65;background:var(--bg-card,#1e2330)">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="evtBnrFieldTitle">제목 <span class="required">*</span></label>
+            <input type="text" id="evtBnrFieldTitle" class="form-input" placeholder="배너 위에 표시될 제목" maxlength="100">
+          </div>
+          <div class="form-group">
+            <label class="form-label">활성화 상태 <span class="required">*</span></label>
+            <div class="banner-toggle-row">
+              <label class="toggle-switch-label">
+                <input type="checkbox" id="evtBnrFieldIsActive" checked>
+                <span class="toggle-track">
+                  <span class="toggle-thumb"></span>
+                </span>
+                <span class="toggle-text" id="evtBnrToggleText">활성화 On</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">이미지 등록 <span class="required">*</span></label>
+            <div class="img-upload-widget">
+              <div class="img-upload-preview-box banner-upload-preview" id="evtBnrImgPreviewBox">
+                <img id="evtBnrImgPreview" src="" alt="" style="display:none">
+                <div class="img-upload-placeholder" id="evtBnrImgPreviewPlaceholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/></svg>
+                </div>
+              </div>
+              <div class="img-upload-side">
+                <ul class="img-upload-specs">
+                  <li>최대 용량 : 3 MB</li>
+                  <li>확장자 : jpg, png, webp</li>
+                </ul>
+                <input type="hidden" id="evtBnrFieldImageUrl">
+                <input type="file" id="evtBnrFieldImg" accept="image/jpeg,image/png,image/webp" style="display:none">
+                <div class="img-upload-btn-row" id="evtBnrFieldImgBtnRow">
+                  <label class="btn-upload-trigger" for="evtBnrFieldImg">
+                    업로드
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  </label>
+                </div>
+                <div class="img-upload-url-row" id="evtBnrFieldImgUrlRow" style="display:none">
+                  <span class="img-upload-url-text" id="evtBnrFieldImgUrlText"></span>
+                  <button type="button" class="btn-img-remove" id="evtBnrFieldImgRemove" title="이미지 제거">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">클릭 동작 (선택)</label>
+            <select id="evtBnrLinkType" class="form-input" style="margin-bottom:8px">
+              <option value="none">없음</option>
+              <option value="external">외부 링크 열기</option>
+              <option value="page">내부 탭 이동</option>
+            </select>
+            <div id="evtBnrLinkExternalWrap" style="display:none">
+              <input type="url" id="evtBnrFieldLink" class="form-input" placeholder="https://...">
+            </div>
+            <div id="evtBnrLinkPageWrap" style="display:none">
+              <select id="evtBnrFieldPage" class="form-input">
+                <option value="home">홈</option>
+                <option value="character">캐릭터</option>
+                <option value="patchnote">패치노트</option>
+                <option value="pvppatch">PvP 패치</option>
+                <option value="event">이벤트</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-panel-footer">
+      <div class="form-error" id="evtBnrFormError" style="display:none"></div>
+      <div class="footer-actions">
+        <button type="button" class="btn-secondary" id="evtBnrFormCancel">취소</button>
+        <button type="button" class="btn-primary" id="evtBnrFormSubmit">
+          <span id="evtBnrSubmitBtnText">등록</span>
+          <div class="btn-spinner" id="evtBnrSubmitSpinner" style="display:none"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+-->
+
+<!-- ===== EVENT PAGE FORM MODAL ===== -->
+<div class="modal-overlay" id="evtPgFormOverlay">
+  <div class="modal-panel modal-panel-wide">
+    <div class="modal-panel-header">
+      <h2 id="evtPgFormTitle">이벤트 추가</h2>
+      <button class="modal-close-btn" id="evtPgFormClose">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-panel-body">
+      <form id="evtPgForm" onsubmit="return false" novalidate>
+        <div class="form-section">
+          <div class="form-section-label">이벤트 정보</div>
+          <div class="form-group">
+            <label class="form-label">ID</label>
+            <input type="text" id="evtPgAutoIdDisplay" class="form-input" readonly style="cursor:default;opacity:.65;background:var(--bg-card,#1e2330)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">기간 <span class="required">*</span></label>
+            <div class="date-range-row">
+              <input type="date" id="evtPgFieldStartDate" class="form-input" style="flex:1;min-width:0">
+              <span class="date-range-sep">~</span>
+              <input type="date" id="evtPgFieldEndDate" class="form-input" style="flex:1;min-width:0">
+            </div>
+            <div class="form-hint">종료일 미입력 시 진행 중 이벤트로 표시됩니다</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">카드 이미지 <span class="form-label-optional">(선택)</span></label>
+            <div class="img-upload-widget">
+              <div class="img-upload-preview-box evt-thumb-preview" id="evtPgThumbPreviewBox">
+                <img id="evtPgThumbPreview" src="" alt="" style="display:none">
+                <div class="img-upload-placeholder" id="evtPgThumbPlaceholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/></svg>
+                </div>
+              </div>
+              <div class="img-upload-side">
+                <ul class="img-upload-specs">
+                  <li>권장 사이즈 : 1280×720 px (자동 리사이즈)</li>
+                  <li>비율 : 16:9</li>
+                  <li>최대 용량 : 3 MB / jpg, png, gif</li>
+                </ul>
+                <input type="hidden" id="evtPgThumbUrl">
+                <input type="file" id="evtPgThumbImg" accept="image/jpeg,image/png,image/gif" style="display:none">
+                <div class="img-upload-btn-row" id="evtPgThumbBtnRow">
+                  <label class="btn-upload-trigger" for="evtPgThumbImg">
+                    업로드
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  </label>
+                </div>
+                <div class="img-upload-url-row" id="evtPgThumbUrlRow" style="display:none">
+                  <span class="img-upload-url-text" id="evtPgThumbUrlText"></span>
+                  <button type="button" class="btn-img-remove" id="evtPgThumbRemove" title="이미지 제거">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="evtPgFieldTitle">제목 <span class="required">*</span></label>
+            <input type="text" id="evtPgFieldTitle" class="form-input" placeholder="이벤트 제목 입력" maxlength="200">
+          </div>
+          <div class="form-group">
+            <label class="form-label">본문 <span class="required">*</span></label>
+            <textarea id="evtEditor" name="evtEditor" style="width:100%; min-height:300px;"></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-panel-footer">
+      <div class="form-error" id="evtPgFormError" style="display:none"></div>
+      <div class="footer-actions">
+        <button type="button" class="btn-secondary" id="evtPgFormCancel">취소</button>
+        <button type="button" class="btn-primary" id="evtPgFormSubmit">
+          <span id="evtPgSubmitBtnText">등록</span>
+          <div class="btn-spinner" id="evtPgSubmitSpinner" style="display:none"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BANNER ORDER MODAL ===== -->
+<div class="modal-overlay" id="bannerOrderOverlay">
+  <div class="modal-panel modal-panel-order">
+    <div class="modal-panel-header">
+      <h2>배너 순서 관리</h2>
+      <button class="modal-close-btn" id="bannerOrderClose">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-panel-body">
+      <p class="order-modal-hint">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:15px;height:15px;flex-shrink:0">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        드래그하여 배너 노출 순서를 변경하세요. 맨 위의 배너가 1번으로 노출됩니다.
+      </p>
+      <ul class="banner-order-list" id="bannerOrderList"></ul>
+    </div>
+    <div class="modal-panel-footer">
+      <div class="form-error" id="bannerOrderError" style="display:none"></div>
+      <div class="footer-actions">
+        <button type="button" class="btn-secondary" id="bannerOrderCancel">취소</button>
+        <button type="button" class="btn-primary" id="bannerOrderSave">
+          <span id="bannerOrderSaveBtnText">저장</span>
+          <div class="btn-spinner" id="bannerOrderSpinner" style="display:none"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EVENT BANNER ORDER MODAL ===== -->
+<!-- EVENT BANNER ORDER UI REMOVED
+<div class="modal-overlay" id="evtBannerOrderOverlay" style="display:none" aria-hidden="true">
+  <div class="modal-panel modal-panel-order">
+    <div class="modal-panel-header">
+      <h2>이벤트 배너 순서 관리</h2>
+      <button class="modal-close-btn" id="evtBannerOrderClose">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-panel-body">
+      <p class="order-modal-hint">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:15px;height:15px;flex-shrink:0">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        드래그하여 이벤트 배너 노출 순서를 변경하세요. 맨 위의 배너가 1번으로 노출됩니다.
+      </p>
+      <ul class="banner-order-list" id="evtBannerOrderList"></ul>
+    </div>
+    <div class="modal-panel-footer">
+      <div class="form-error" id="evtBannerOrderError" style="display:none"></div>
+      <div class="footer-actions">
+        <button type="button" class="btn-secondary" id="evtBannerOrderCancel">취소</button>
+        <button type="button" class="btn-primary" id="evtBannerOrderSave">
+          <span id="evtBannerOrderSaveBtnText">저장</span>
+          <div class="btn-spinner" id="evtBannerOrderSpinner" style="display:none"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+-->
+
+<!-- ===== DELETE CONFIRM MODAL ===== -->
+<div class="modal-overlay" id="deleteOverlay">
+  <div class="modal-confirm">
+    <div class="confirm-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+      </svg>
+    </div>
+    <h3 class="confirm-title" id="deleteModalTitle">삭제</h3>
+    <p class="confirm-desc" id="deleteModalDesc"></p>
+    <div class="confirm-actions">
+      <button class="btn-secondary" id="deleteCancelBtn">취소</button>
+      <button class="btn-danger" id="deleteConfirmBtn">
+        <span id="deleteBtnText">삭제</span>
+        <div class="btn-spinner" id="deleteSpinner" style="display:none"></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CHARACTER IMAGE EDITOR ===== -->
+<div class="char-editor-overlay" id="charEditorOverlay">
+  <div class="char-editor-modal">
+    <div class="char-editor-header">
+      <div class="char-editor-header-left">
+        <span class="char-editor-title">캐릭터 이미지 편집</span>
+        <span class="char-editor-subtitle">1:1 비율 고정 &middot; 출력 500×500 px</span>
+      </div>
+      <button class="char-editor-close-btn" id="charEditorCloseBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="char-editor-body" id="charEditorBody">
+      <div class="char-editor-img-wrap" id="charEditorImgWrap">
+        <img id="charEditorImg" src="" alt="편집 이미지">
+      </div>
+    </div>
+    <div class="char-editor-footer">
+      <div class="char-editor-tools">
+        <button class="char-tool-btn" id="ceRotateL" title="반시계 90° 회전">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+        </button>
+        <button class="char-tool-btn" id="ceRotateR" title="시계 90° 회전">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"/></svg>
+        </button>
+        <button class="char-tool-btn" id="ceFlipH" title="좌우 반전">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 3H5a2 2 0 00-2 2v14a2 2 0 002 2h3m8-18h3a2 2 0 012 2v14a2 2 0 01-2 2h-3m-4-18v20"/></svg>
+        </button>
+        <div class="char-tool-sep"></div>
+        <button class="char-tool-btn" id="ceZoomIn" title="확대">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><circle cx="11" cy="11" r="8" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 8v6m-3-3h6"/></svg>
+        </button>
+        <button class="char-tool-btn" id="ceZoomOut" title="축소">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><circle cx="11" cy="11" r="8" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M8 11h6"/></svg>
+        </button>
+        <button class="char-tool-btn" id="ceReset" title="초기화">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+      </div>
+      <div class="char-editor-actions">
+        <button class="btn-secondary" id="charEditorCancelBtn">취소</button>
+        <button class="btn-primary" id="charEditorApplyBtn">
+          <span id="charEditorApplyText">적용 및 업로드</span>
+          <div class="btn-spinner" id="charEditorApplySpinner" style="display:none"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== NOTICE FORM MODAL ===== -->
+<div class="form-overlay" id="noticeFormOverlay">
+  <div class="form-modal" style="max-width:720px">
+    <div class="form-modal-header">
+      <h3 class="form-modal-title" id="noticeFormTitle">공지사항 추가</h3>
+      <button class="form-modal-close" id="noticeFormClose">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-modal-body">
+      <div class="form-error" id="noticeFormError" style="display:none"></div>
+      <div class="form-row">
+        <label class="form-label">제목 <span class="form-required">*</span></label>
+        <input type="text" id="noticeFieldTitle" class="form-input" placeholder="공지 제목을 입력하세요">
+      </div>
+      <div class="form-row">
+        <label class="form-label">본문 <span class="form-required">*</span></label>
+        <textarea id="noticeEditor"></textarea>
+      </div>
+      <div class="form-row" style="display:flex;gap:24px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="noticeFieldPinned">
+          <span class="form-label" style="margin:0">상단 고정</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="noticeFieldVisible" checked>
+          <span class="form-label" style="margin:0">노출 (ON)</span>
+        </label>
+      </div>
+    </div>
+    <div class="form-modal-footer">
+      <button class="btn-secondary" id="noticeFormCancel">취소</button>
+      <button class="btn-primary" id="noticeFormSubmit">
+        <span id="noticeSubmitBtnText">등록</span>
+        <div class="btn-spinner" id="noticeSubmitSpinner" style="display:none"></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ===== FIREBASE ===== -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="js/firebase.js"></script>
+
+<!-- jQuery + Summernote -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-lite.min.js"
+        integrity="sha384-iVgVx8/hQmlwlQEjVQINjwUmfLFGA+uCKRqqHEy8FYOM9zZsjYpNJYtIy9Eo7ZP+" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/lang/summernote-ko-KR.min.js"
+        integrity="sha384-lzQ4hvn5R3NnhXRj3EYZs12x5gvf9/UNqqMcAFg2j09J/cMEFJPgPSJCNClGB4DH" crossorigin="anonymous"></script>
+
+<!-- Cropper.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"
+        integrity="sha384-jrOgQzBlDeUNdmQn3rUt/PZD+pdcRBdWd/HWRqRo+n2OR2QtGyjSaJC0GiCeH+ir" crossorigin="anonymous"></script>
+
+<script src="adminjs/admin-core.js"></script>
+<script src="adminjs/admin-characters.js"></script>
+<script src="adminjs/admin-support-chars.js"></script>
+<script src="adminjs/admin-pvp.js"></script>
+<script src="adminjs/admin-patchnotes.js"></script>
+<script src="adminjs/admin-banners.js"></script>
+<script src="adminjs/admin-events.js"></script>
+<script src="adminjs/admin-notices.js"></script>
+<script src="adminjs/admin-system.js"></script>
+
+<div id="permSectionModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center">
+  <div style="background:var(--bg-card);border-radius:14px;width:min(760px,96vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.5)">
+    <!-- 헤더 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border)">
+      <h3 id="permSectionModalTitle" style="margin:0;font-size:16px;font-weight:700;color:var(--text-primary)">세부 권한 설정</h3>
+      <button onclick="closePermSectionModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:20px;line-height:1;padding:4px">✕</button>
+    </div>
+    <!-- 바디 -->
+    <div style="overflow:auto;flex:1;padding:20px 24px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border)">
+            <th style="text-align:left;padding:8px 12px;color:var(--text-muted);font-weight:600">섹션</th>
+            <th style="text-align:center;padding:8px 8px;color:var(--text-muted);font-weight:600">보기</th>
+            <th style="text-align:center;padding:8px 8px;color:var(--text-muted);font-weight:600">추가</th>
+            <th style="text-align:center;padding:8px 8px;color:var(--text-muted);font-weight:600">수정</th>
+            <th style="text-align:center;padding:8px 8px;color:var(--text-muted);font-weight:600">삭제</th>
+            <th style="text-align:center;padding:8px 8px;color:var(--text-muted);font-weight:600">저장</th>
+          </tr>
+        </thead>
+        <tbody id="permSectionModalBody"></tbody>
+      </table>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-primary btn-sm" onclick="toggleAllSectionPerms(true)">전체 허용</button>
+        <button class="btn-danger btn-sm"  onclick="toggleAllSectionPerms(false)">전체 차단</button>
+      </div>
+      <p style="margin-top:12px;font-size:12px;color:var(--text-muted)">
+        ※ 추가·수정·삭제·저장 권한이 있으면 보기 권한이 자동으로 켜집니다.
+      </p>
+    </div>
+    <!-- 푸터 -->
+    <div style="display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid var(--border)">
+      <button class="btn-revert" onclick="closePermSectionModal()">취소</button>
+      <button class="btn-publish" id="btnSaveSectionPerms" onclick="saveSectionPerms()">저장</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
