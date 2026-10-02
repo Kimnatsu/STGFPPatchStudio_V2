@@ -85,7 +85,7 @@
         캐릭터 관리
       </button>
       <button class="sidebar-item" data-section="supportchars">
-        현질 캐릭터 관리
+        현질 서폿 캐릭터 관리
       </button>
       <button class="sidebar-item" data-section="pvppatch">
         PvP 패치 관리
@@ -395,10 +395,10 @@
       <div class="section-header">
         <div>
           <h2 class="section-title">캐릭터 관리</h2>
-          <p class="section-desc">캐릭터 정보, 스킬, 패치 이력, 팁을 관리합니다. Firestore <code>characters</code> 컬렉션과 동기화됩니다.</p>
         </div>
       </div>
       <div class="section-btn-row">
+        <span class="toolbar-count" id="charCountLabel">로딩 중...</span>
         <button class="btn-primary" id="btnAddChar">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -407,7 +407,7 @@
         </button>
       </div>
       <div class="admin-toolbar">
-        <span class="toolbar-count" id="charCountLabel">로딩 중...</span>
+        <div class="toolbar-filter-group">
         <select id="adminGradeFilter" class="admin-select">
           <option value="all">전체 등급</option>
           <option value="특전">특전</option>
@@ -430,14 +430,17 @@
           <option value="특수">특수</option>
           <option value="원소">원소</option>
         </select>
+        </div>
+        <div class="toolbar-actions">
+        <button class="btn-toolbar-icon" title="새로고침" onclick="refreshTableWithReset(['adminGradeFilter','adminAttributeFilter','adminBattleTypeFilter','adminCharSearch'], loadCharacters, 'charTableBody')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.001 0 01-15.357-2m15.357 2H15"/></svg></button>
         <div class="search-wrap">
           <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
           <input type="search" id="adminCharSearch" class="admin-search" placeholder="캐릭터 이름 검색...">
         </div>
-        <button class="btn-toolbar-icon" title="새로고침" onclick="loadCharacters()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
         <select class="admin-select per-page-select" id="charPerPage"><option value="10" selected>10개</option><option value="20">20개</option><option value="30">30개</option><option value="40">40개</option><option value="50">50개</option></select>
+        </div>
       </div>
       <div class="admin-table-wrap">
         <table class="admin-table">
@@ -479,10 +482,10 @@
       <div class="section-header">
         <div>
           <h2 class="section-title">현질 서폿 캐릭터 관리</h2>
-          <p class="section-desc">현질 서포트 캐릭터의 정보와 등급을 관리합니다. Firestore <code>supportCharacters</code> 컬렉션과 동기화됩니다.</p>
         </div>
       </div>
       <div class="section-btn-row">
+        <span class="toolbar-count" id="scCountLabel">로딩 중...</span>
         <button class="btn-primary" id="btnAddSupportChar">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -491,7 +494,7 @@
         </button>
       </div>
       <div class="admin-toolbar">
-        <span class="toolbar-count" id="scCountLabel">로딩 중...</span>
+        <div class="toolbar-filter-group">
         <select id="scGradeFilter" class="admin-select">
           <option value="all">전체 등급</option>
           <option value="특전">특전</option>
@@ -501,14 +504,17 @@
           <option value="B">B</option>
           <option value="C">C</option>
         </select>
+        </div>
+        <div class="toolbar-actions">
         <div class="search-wrap">
           <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
           <input type="search" id="scCharSearch" class="admin-search" placeholder="캐릭터 이름 검색...">
         </div>
-        <button class="btn-toolbar-icon" title="새로고침" onclick="loadSupportChars()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+        <button class="btn-toolbar-icon" title="새로고침" onclick="refreshTableWithReset(['scGradeFilter','scAttributeFilter','scBattleTypeFilter','scCharSearch'], loadSupportChars, 'scTableBody')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
         <select class="admin-select per-page-select" id="scPerPage"><option value="10" selected>10개</option><option value="20">20개</option><option value="30">30개</option><option value="40">40개</option><option value="50">50개</option></select>
+        </div>
       </div>
       <div class="admin-table-wrap">
         <table class="admin-table">
@@ -548,10 +554,10 @@
       <div class="section-header">
         <div>
           <h2 class="section-title">PvP 패치 관리</h2>
-          <p class="section-desc">캐릭터별 PvP 밸런스 패치 (버프 / 너프 / 수정) 를 관리합니다. Firestore <code>pvpPatch</code> 컬렉션과 동기화됩니다.</p>
         </div>
       </div>
       <div class="section-btn-row">
+        <span class="toolbar-count" id="pvpCountLabel">로딩 중...</span>
         <button class="btn-primary" id="btnAddPvp">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -560,21 +566,24 @@
         </button>
       </div>
       <div class="admin-toolbar">
-        <span class="toolbar-count" id="pvpCountLabel">로딩 중...</span>
+        <div class="toolbar-filter-group">
         <select id="pvpTypeFilter" class="admin-select">
           <option value="all">전체 타입</option>
           <option value="buff">▲ 버프</option>
           <option value="nerf">▼ 너프</option>
           <option value="fix">✦ 기능 수정</option>
         </select>
+        </div>
+        <div class="toolbar-actions">
         <div class="search-wrap">
           <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
           <input type="search" id="pvpSearch" class="admin-search" placeholder="캐릭터 이름 검색...">
         </div>
-        <button class="btn-toolbar-icon" title="새로고침" onclick="loadPvpPatches()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+        <button class="btn-toolbar-icon" title="새로고침" onclick="refreshTableWithReset(['pvpTypeFilter','pvpSearch'], loadPvpPatches, 'pvpTableBody')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
         <select class="admin-select per-page-select" id="pvpPerPage"><option value="10" selected>10개</option><option value="20">20개</option><option value="30">30개</option><option value="40">40개</option><option value="50">50개</option></select>
+        </div>
       </div>
       <div class="admin-table-wrap">
         <table class="admin-table">
@@ -614,10 +623,10 @@
       <div class="section-header">
         <div>
           <h2 class="section-title">패치노트 관리</h2>
-          <p class="section-desc">게임 업데이트 패치노트를 날짜별로 작성하고 관리합니다. Firestore <code>patchNotes</code> 컬렉션과 동기화됩니다.</p>
         </div>
       </div>
       <div class="section-btn-row">
+        <span class="toolbar-count" id="patchNoteCountLabel">로딩 중...</span>
         <button class="btn-primary" id="btnAddPatchNote">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -626,15 +635,17 @@
         </button>
       </div>
       <div class="admin-toolbar">
-        <span class="toolbar-count" id="patchNoteCountLabel">로딩 중...</span>
+        <div class="toolbar-filter-group"></div>
+        <div class="toolbar-actions">
         <div class="search-wrap">
           <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
           <input type="search" id="patchNoteSearch" class="admin-search" placeholder="제목 검색...">
         </div>
-        <button class="btn-toolbar-icon" title="새로고침" onclick="loadPatchNotes()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+        <button class="btn-toolbar-icon" title="새로고침" onclick="refreshTableWithReset(['patchNoteSearch'], loadPatchNotes, 'patchNoteTableBody')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
         <select class="admin-select per-page-select" id="patchPerPage"><option value="10" selected>10개</option><option value="20">20개</option><option value="30">30개</option><option value="40">40개</option><option value="50">50개</option></select>
+        </div>
       </div>
       <div class="admin-table-wrap">
         <table class="admin-table">
@@ -696,7 +707,7 @@
           <option value="active">활성</option>
           <option value="inactive">비활성</option>
         </select>
-        <button class="btn-toolbar-icon" title="새로고침" onclick="loadBanners()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+        <button class="btn-toolbar-icon" title="새로고침" onclick="refreshTableWithReset(['bannerStatusFilter','bannerSearch'], loadBanners, 'bannerTableBody')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
         <div class="search-wrap">
           <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -743,10 +754,10 @@
       <div class="section-header">
         <div>
           <h2 class="section-title">이벤트 관리</h2>
-          <p class="section-desc">이벤트 페이지를 작성하고 관리합니다. Firestore <code>events</code> 컬렉션과 동기화됩니다.</p>
         </div>
       </div>
       <div class="section-btn-row">
+        <span class="toolbar-count" id="evtPageCountLabel">로딩 중...</span>
         <button class="btn-primary" id="btnAddEvtPage">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           이벤트 추가
@@ -791,13 +802,15 @@
       <!-- 이벤트 페이지 패널 -->
       <div id="evtPanelPage">
         <div class="admin-toolbar">
-          <span class="toolbar-count" id="evtPageCountLabel">로딩 중...</span>
+          <div class="toolbar-filter-group"></div>
+          <div class="toolbar-actions">
           <div class="search-wrap">
             <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             <input type="search" id="evtPageSearch" class="admin-search" placeholder="제목 검색...">
           </div>
-          <button class="btn-toolbar-icon" title="새로고침" onclick="loadEvtPages()"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
+        <button class="btn-toolbar-icon" title="새로고침" onclick="refreshTableWithReset(['evtPageSearch'], loadEvtPages, 'evtPageTableBody')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>
           <select class="admin-select per-page-select" id="evtPagePerPage"><option value="10" selected>10개</option><option value="20">20개</option><option value="30">30개</option><option value="50">50개</option></select>
+          </div>
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
@@ -844,7 +857,7 @@
           <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           <input type="search" id="noticeSearch" class="admin-search" placeholder="제목 검색...">
         </div>
-        <button class="btn-toolbar-icon" title="새로고침" onclick="loadNotices()">
+        <button class="btn-toolbar-icon" title="새로고침" onclick="refreshTableWithReset(['noticeSearch'], loadNotices, 'noticeTableBody')">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         </button>
         <select class="admin-select per-page-select" id="noticePerPage">
@@ -893,22 +906,61 @@
       <div class="section-header">
         <div>
           <h2 class="section-title">게시판 관리</h2>
-          <p class="section-desc">서비스 게시판의 운영 상태와 게시판별 설정을 관리합니다.</p>
         </div>
       </div>
-      <div class="backup-block">
-        <div class="backup-block-header">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h5m7-2a8 8 0 11-16 0 8 8 0 0016 0z"/></svg>
-          <div>
-            <div class="backup-block-title">게시판 운영</div>
-            <div class="backup-block-desc">게시판 기능과 데이터 연결을 위한 관리 화면입니다.</div>
+      <div class="section-btn-row">
+        <span class="toolbar-count" id="boardCountLabel">로딩 중...</span>
+        <button class="btn-primary" id="btnAddBoard">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          글쓰기
+        </button>
+      </div>
+      <div class="admin-toolbar">
+        <div class="toolbar-filter-group">
+          <select id="boardCategoryFilter" class="admin-select">
+            <option value="all">전체 카테고리</option>
+            <option value="자유">자유</option>
+            <option value="정보">정보</option>
+            <option value="질문">질문</option>
+            <option value="자랑">자랑</option>
+          </select>
+        </div>
+        <div class="toolbar-actions">
+          <button class="btn-toolbar-icon" title="새로고침" onclick="refreshTableWithReset(['boardCategoryFilter','boardSearch'], loadBoards, 'boardTableBody')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.001 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
+          <div class="search-wrap">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="search" id="boardSearch" class="admin-search" placeholder="제목 또는 작성자 검색...">
           </div>
-        </div>
-        <div class="dashboard-admin-card">
-          <div class="dash-homepage-title">게시판 관리 기능 준비 중</div>
-          <div class="dash-homepage-desc">게시판 컬렉션과 게시판별 공개 범위가 설정되면 이 화면에서 게시판을 추가·수정·비활성화할 수 있습니다.</div>
+          <select class="admin-select per-page-select" id="boardPerPage">
+            <option value="10" selected>10개</option>
+            <option value="20">20개</option>
+            <option value="30">30개</option>
+            <option value="40">40개</option>
+            <option value="50">50개</option>
+          </select>
         </div>
       </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>게시글 ID</th>
+              <th>카테고리</th>
+              <th>제목</th>
+              <th>글쓴이</th>
+              <th>노출 여부</th>
+              <th>관리자</th>
+              <th class="col-actions">작업</th>
+            </tr>
+          </thead>
+          <tbody id="boardTableBody">
+            <tr><td colspan="7" class="table-loading"><div class="spinner"></div><span>게시글 로딩 중...</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-paginator" id="boardPaginator"></div>
     </section>
 
     <!-- ===== CUSTOMER SUPPORT SECTION ===== -->
@@ -2157,6 +2209,52 @@
   </div>
 </div>
 
+<!-- ===== BOARD POST FORM MODAL ===== -->
+<div class="modal-overlay" id="boardFormOverlay">
+  <div class="modal-panel modal-panel-wide">
+    <div class="modal-panel-header">
+      <h2 id="boardFormTitle">게시글 작성</h2>
+      <button class="modal-close-btn" id="boardFormClose" type="button" aria-label="닫기">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-panel-body">
+      <div class="form-section">
+        <div class="form-section-label">게시글 정보</div>
+        <div class="form-group">
+          <label class="form-label" for="boardFieldCategory">카테고리</label>
+          <select id="boardFieldCategory" class="form-input">
+            <option value="자유">자유</option>
+            <option value="정보">정보</option>
+            <option value="질문">질문</option>
+            <option value="자랑">자랑</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="boardFieldTitle">제목 <span class="required">*</span></label>
+          <input type="text" id="boardFieldTitle" class="form-input" maxlength="200" placeholder="게시글 제목">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="boardFieldContent">본문</label>
+          <textarea id="boardFieldContent" class="form-input board-content-input" rows="10" maxlength="10000" placeholder="게시글 내용을 입력하세요"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-panel-footer">
+      <div class="form-error" id="boardFormError" style="display:none"></div>
+      <div class="footer-actions">
+        <button type="button" class="btn-secondary" id="boardFormCancel">취소</button>
+        <button type="button" class="btn-primary" id="boardFormSubmit">
+          <span id="boardSubmitBtnText">등록</span>
+          <div class="btn-spinner" id="boardSubmitSpinner" style="display:none"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== TOAST ===== -->
 <div class="toast-wrap" id="toastWrap"></div>
 
@@ -2185,6 +2283,7 @@
 <script src="adminjs/admin-patchnotes.js"></script>
 <script src="adminjs/admin-banners.js"></script>
 <script src="adminjs/admin-events.js"></script>
+<script src="adminjs/admin-boards.js"></script>
 <script src="adminjs/admin-notices.js"></script>
 <script src="adminjs/admin-system.js"></script>
 

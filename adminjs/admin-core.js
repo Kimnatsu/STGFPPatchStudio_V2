@@ -91,6 +91,7 @@ const SECTION_CONFIG = [
   { sidebarKey: 'patchnote',    permKey: 'patchNotes',   label: '패치노트' },
   { sidebarKey: 'banners',      permKey: 'banners',      label: '배너' },
   { sidebarKey: 'events',       permKey: 'events',       label: '이벤트' },
+  { sidebarKey: 'boards',       permKey: 'boards',       label: '게시판' },
   { sidebarKey: 'notices',      permKey: 'notices',      label: '공지사항' },
 ];
 const PERM_ACTIONS = [
@@ -135,6 +136,7 @@ function _enforcePermUI() {
     { id: 'btnAddPatchNote',   key: 'patchNotes' },
     { id: 'btnAddBanner',      key: 'banners' },
     { id: 'btnAddEvtPage',     key: 'events' },
+    { id: 'btnAddBoard',       key: 'boards' },
   ];
   addBtns.forEach(({ id, key }) => {
     const el = document.getElementById(id);
@@ -546,7 +548,7 @@ document.querySelectorAll('.sidebar-item').forEach((btn) => {
 const SECTION_NAMES = {
   dashboard:    '홈',
   characters:   '캐릭터 관리',
-  supportchars: '현질 캐릭터 관리',
+  supportchars: '현질 서폿 캐릭터 관리',
   pvppatch:     'PvP 패치 관리',
   patchnote:    '패치노트 관리',
   banners:      '메인 배너 관리',
@@ -771,6 +773,7 @@ function switchSection(sectionKey) {
   if (sectionKey === 'members') loadPermUsers();
   if (sectionKey === 'permissions') loadPermissionsSection();
   if (sectionKey === 'events') loadEvtPages();
+  if (sectionKey === 'boards') loadBoards();
   if (sectionKey === 'notices') loadNotices();
 }
 
@@ -922,9 +925,169 @@ let filteredSupportCharList = [];
 
 async function loadAllData() {
   await loadAdminNicknameMap();
-  await Promise.all([loadCharacters(), loadPvpPatches(), loadPatchNotes(), loadBanners(), loadSupportChars(), loadEvtPages(), loadNotices()]);
+  await Promise.all([loadCharacters(), loadPvpPatches(), loadPatchNotes(), loadBanners(), loadSupportChars(), loadEvtPages(), loadBoards(), loadNotices()]);
   loadDashboardStats();
 }
+
+function setTableBodyHtml(tbody, html) {
+  if (!tbody || tbody.innerHTML === html) return;
+  tbody.innerHTML = html;
+}
+
+function showTableLoading(tbody, colSpan) {
+  if (!tbody || (tbody.children.length && !tbody.querySelector('.table-loading'))) return;
+  setTableBodyHtml(
+    tbody,
+    `<tr><td colspan="${colSpan}" class="table-loading"><div class="spinner"></div><span>로딩 중...</span></td></tr>`
+  );
+}
+
+function showTableError(tbody, html) {
+  if (!tbody || (tbody.children.length && !tbody.querySelector('.table-loading'))) return;
+  setTableBodyHtml(tbody, html);
+}
+
+const _allTableFilterControlIds = [
+  'adminGradeFilter', 'adminAttributeFilter', 'adminBattleTypeFilter', 'adminCharSearch',
+  'scGradeFilter', 'scAttributeFilter', 'scBattleTypeFilter', 'scCharSearch',
+  'pvpTypeFilter', 'pvpSearch', 'patchNoteSearch',
+  'bannerStatusFilter', 'bannerSearch', 'evtBannerStatusFilter', 'evtBannerSearch',
+  'evtPageSearch', 'noticeSearch', 'permUserSearch',
+  'boardCategoryFilter', 'boardSearch',
+];
+
+function resetTableFilterControls(controlIds = _allTableFilterControlIds) {
+  controlIds.forEach(id => {
+    const control = document.getElementById(id);
+    if (!control) return;
+
+    if (control.tagName === 'SELECT') {
+      const defaultOption = [...control.options].find(option => option.value === 'all') || control.options[0];
+      if (defaultOption) control.value = defaultOption.value;
+    } else if ('value' in control) {
+      control.value = '';
+    }
+  });
+}
+
+async function refreshTableWithReset(controlIds, refreshFn, tbodyId) {
+  resetTableFilterControls(controlIds);
+  if (tbodyId) resetTableSelection(tbodyId);
+  if (typeof refreshFn === 'function') await refreshFn();
+}
+
+const _selectedRowsByTable = new Map();
+
+function resetTableSelection(tbodyId) {
+  _selectedRowsByTable.get(tbodyId)?.clear();
+  const tbody = document.getElementById(tbodyId);
+  tbody?.querySelectorAll('.table-row-select').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  syncTableSelectionHeader(tbodyId);
+}
+
+function resetAllTableSelections() {
+  [..._selectedRowsByTable.keys()].forEach(resetTableSelection);
+}
+
+function applyTableSelection(tbodyId, rowKeys = []) {
+  const tbody = document.getElementById(tbodyId);
+  const table = tbody?.closest('table');
+  const headerRow = table?.querySelector('thead tr');
+  if (!tbody || !headerRow) return;
+
+  let selectedKeys = _selectedRowsByTable.get(tbodyId);
+  if (!selectedKeys) {
+    selectedKeys = new Set();
+    _selectedRowsByTable.set(tbodyId, selectedKeys);
+  }
+
+  let headerCell = headerRow.querySelector(':scope > th.table-select-cell');
+  if (!headerCell) {
+    headerCell = document.createElement('th');
+    headerCell.className = 'table-select-cell';
+    const selectAll = document.createElement('input');
+    selectAll.type = 'checkbox';
+    selectAll.className = 'table-select-all';
+    selectAll.setAttribute('aria-label', '현재 페이지 전체 선택');
+    selectAll.title = '현재 페이지 전체 선택';
+    headerCell.appendChild(selectAll);
+    headerRow.insertBefore(headerCell, headerRow.firstChild);
+  }
+
+  const rows = [...tbody.rows];
+  rowKeys.forEach((value, index) => {
+    const row = rows[index];
+    if (!row || value == null) return;
+
+    const key = String(value);
+    row.dataset.selectionKey = key;
+    let cell = row.querySelector(':scope > td.table-select-cell');
+    if (!cell) {
+      cell = document.createElement('td');
+      cell.className = 'table-select-cell';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'table-row-select';
+      checkbox.setAttribute('aria-label', '행 선택');
+      cell.appendChild(checkbox);
+      row.insertBefore(cell, row.firstChild);
+    }
+    cell.querySelector('.table-row-select').checked = selectedKeys.has(key);
+  });
+
+  rows.slice(rowKeys.length).forEach(row => {
+    const spanningCell = row.querySelector(':scope > td[colspan]');
+    if (!spanningCell || spanningCell.dataset.selectionColumnAdded) return;
+    spanningCell.colSpan += 1;
+    spanningCell.dataset.selectionColumnAdded = 'true';
+  });
+
+  syncTableSelectionHeader(tbodyId);
+}
+
+function syncTableSelectionHeader(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  const header = tbody?.closest('table')?.querySelector('.table-select-all');
+  if (!tbody || !header) return;
+
+  const rowChecks = [...tbody.querySelectorAll('.table-row-select')];
+  const checkedCount = rowChecks.filter(checkbox => checkbox.checked).length;
+  header.disabled = rowChecks.length === 0;
+  header.checked = rowChecks.length > 0 && checkedCount === rowChecks.length;
+  header.indeterminate = checkedCount > 0 && checkedCount < rowChecks.length;
+}
+
+document.addEventListener('change', event => {
+  const checkbox = event.target;
+  if (!checkbox.matches?.('.table-select-all, .table-row-select')) return;
+  const tbody = checkbox.closest('table')?.querySelector('tbody[id]');
+  if (!tbody) return;
+
+  let selectedKeys = _selectedRowsByTable.get(tbody.id);
+  if (!selectedKeys) {
+    selectedKeys = new Set();
+    _selectedRowsByTable.set(tbody.id, selectedKeys);
+  }
+
+  if (checkbox.matches('.table-select-all')) {
+    tbody.querySelectorAll('tr[data-selection-key]').forEach(row => {
+      const rowCheckbox = row.querySelector('.table-row-select');
+      if (!rowCheckbox) return;
+      rowCheckbox.checked = checkbox.checked;
+      if (checkbox.checked) selectedKeys.add(row.dataset.selectionKey);
+      else selectedKeys.delete(row.dataset.selectionKey);
+    });
+  } else {
+    const row = checkbox.closest('tr[data-selection-key]');
+    if (!row) return;
+    if (checkbox.checked) selectedKeys.add(row.dataset.selectionKey);
+    else selectedKeys.delete(row.dataset.selectionKey);
+  }
+
+  syncTableSelectionHeader(tbody.id);
+});
 
 // ===== 페이지네이터 렌더링 유틸 =====
 function renderPaginator(containerId, totalItems, pageSize, currentPage, onPageChange) {
